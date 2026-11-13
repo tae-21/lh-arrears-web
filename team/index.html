@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1팀 체납관리 홈 ver.6</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f3ef; --surface:#fcfcfb; --line:#e3e1da; --line2:#efede7;
+  --ink:#16181b; --ink2:#52514e; --ink3:#85837c;
+  --side:#14232b; --side-ink:#c9d6d8; --side-mute:#7f9499; --side-on:#1f3a44; --accent:#19b394;
+  --s-miss:#d03b3b; --s-need:#2a78d6; --s-hold:#eda100; --s-ok:#1baf7a;
+  --bar:#2a78d6; --bar-soft:#b7d3f6; --track:#eeece6;
+  --kim:#2a78d6; --shin:#1baf7a; --yeo:#6250d6;
+  --shadow:0 1px 2px rgba(20,35,43,.05),0 6px 20px rgba(20,35,43,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme:dark;
+    --bg:#121413; --surface:#1a1a19; --line:#2f302d; --line2:#262724;
+    --ink:#f0efec; --ink2:#c3c2b7; --ink3:#8d8c84;
+    --side:#0c1519; --side-ink:#c9d6d8; --side-mute:#6f858a; --side-on:#183037; --accent:#22c7a5;
+    --s-miss:#e66767; --s-need:#3987e5; --s-hold:#c98500; --s-ok:#199e70;
+    --bar:#3987e5; --bar-soft:#184f95; --track:#262724;
+    --kim:#3987e5; --shin:#199e70; --yeo:#9085e9;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+a{color:inherit}
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+
+/* sidebar */
+.side{background:var(--side);color:var(--side-ink);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:18px}
+.brand{display:flex;gap:10px;align-items:center;padding:0 8px}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#2a78d6);display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px}
+.brand b{display:block;color:#fff;font-size:15px;line-height:1.2}
+.brand small{color:var(--side-mute);font-size:11.5px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav .cap{font-size:10.5px;letter-spacing:.08em;color:var(--side-mute);padding:10px 10px 4px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;text-decoration:none;color:var(--side-ink);font-weight:500}
+.nav a:hover{background:rgba(255,255,255,.05)}
+.nav a.on{background:var(--side-on);color:#fff}
+.nav a .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--side-mute)}
+.nav a .who{margin-left:auto;font-size:11px;color:var(--side-mute)}
+.side .foot{margin-top:auto;font-size:11px;color:var(--side-mute);padding:0 8px;line-height:1.6}
+.badge{display:inline-block;border:1px solid var(--side-mute);border-radius:99px;padding:0 8px;font-size:10.5px;color:var(--side-ink)}
+
+/* main */
+.main{min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 28px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.top h1{font-size:18px;margin:0;font-weight:700}
+.top .sub{color:var(--ink3);font-size:12px}
+.filters{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters select,.tbar select,.tbar input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 12px;cursor:pointer;color:var(--ink2)}
+.seg button.on{background:var(--ink);color:var(--surface)}
+.reset{border:0;background:none;color:var(--ink3);cursor:pointer;text-decoration:underline;padding:4px}
+.page{padding:22px 28px 48px;max-width:1280px;width:100%}
+.view{display:none}.view.on{display:block}
+.lead{color:var(--ink2);max-width:76ch;margin:0 0 16px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1.25fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g6{grid-template-columns:repeat(6,1fr)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);min-width:0}
+.card h3{margin:0 0 2px;font-size:14.5px;font-weight:700}
+.card .src{font-size:11.5px;color:var(--ink3);margin:0 0 12px}
+.mt{margin-top:14px}
+
+.hero{padding:10px 2px 22px}
+.hero .eye{font-size:12px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:7px}
+.hero .eye i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.hero h2{font-size:30px;line-height:1.3;letter-spacing:-.02em;margin:8px 0 8px;font-weight:800}
+.hero h2 em{font-style:normal;color:var(--accent)}
+.hero p{margin:0;color:var(--ink2);max-width:60ch}
+/* pipeline cards */
+.pipe{display:grid;grid-template-columns:1fr 24px 1fr 24px 1fr;align-items:stretch;gap:0;margin-bottom:14px}
+.pipe .arr{display:grid;place-items:center;color:var(--ink3);font-size:18px}
+.pc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);border-top:3px solid var(--c);cursor:pointer;text-decoration:none;display:block}
+.pc:hover{border-color:var(--c)}
+.pc .step{font-size:11px;color:var(--ink3);letter-spacing:.04em}
+.pc b{display:block;font-size:15.5px;margin:1px 0}
+.pc .own{font-size:12px;color:var(--ink2)}
+.pc .big{font-size:24px;font-weight:800;margin-top:8px;letter-spacing:-.02em}
+.pc .big small{font-size:12px;font-weight:500;color:var(--ink3);margin-left:4px}
+.pc .out{font-size:11.5px;color:var(--ink3);margin-top:2px}
+
+/* KPI */
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:var(--shadow);min-width:0}
+.kpi .l{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+.kpi .l i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.kpi .v{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin-top:2px}
+.kpi .v small{font-size:12.5px;font-weight:500;color:var(--ink3);margin-left:3px}
+.kpi .d{font-size:11.5px;color:var(--ink3);min-height:17px}
+
+/* bars */
+.bars{display:flex;flex-direction:column;gap:7px}
+.br{display:grid;grid-template-columns:var(--lw,132px) 1fr 44px;gap:10px;align-items:center;font-size:12.5px}
+.br .lb{color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.br .tr{display:flex;gap:2px;height:16px;align-items:stretch}
+.br .sg{border-radius:0;min-width:2px;cursor:default}
+.br .sg:last-child{border-radius:0 4px 4px 0}
+.br .sg:hover{filter:brightness(1.12)}
+.br .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink2);margin:0 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px}
+.empty{color:var(--ink3);font-size:12.5px;padding:8px 0}
+
+/* tables */
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line2);text-align:left;white-space:nowrap}
+th{font-size:11.5px;color:var(--ink3);font-weight:600;position:sticky;top:0;background:var(--surface)}
+th.s{cursor:pointer}th.s:hover{color:var(--ink)}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:1px 9px 1px 7px;font-size:11.5px}
+.chip i{width:7px;height:7px;border-radius:50%}
+.okmark{color:var(--s-ok);font-weight:700}
+.tbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.tbar .cnt{margin-left:auto;color:var(--ink3);font-size:12px}
+.more{margin-top:10px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 14px;cursor:pointer}
+
+/* flow */
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.fl{border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.fl .l{font-size:11.5px;color:var(--ink2)}.fl .v{font-size:19px;font-weight:800}
+.fl.end{background:var(--line2)}
+
+/* rules / team */
+.rules{margin:0;padding-left:18px;color:var(--ink2)}.rules li{margin:5px 0}
+.mem{border-left:3px solid var(--c);padding:2px 0 2px 12px;margin:10px 0}
+.mem b{font-size:14.5px}.mem .role{font-size:12px;color:var(--ink2)}
+.mem .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.lk{font-size:12px;border:1px solid var(--line);border-radius:8px;padding:3px 9px;text-decoration:none;color:var(--ink2)}
+.lk:hover{border-color:var(--ink3);color:var(--ink)}
+code{background:var(--line2);border-radius:5px;padding:1px 5px;font-size:12px}
+.note{border:1px dashed var(--line);border-radius:10px;padding:10px 12px;color:var(--ink2);font-size:12.5px}
+.crit{display:grid;grid-template-columns:1fr auto;gap:6px 14px;font-size:12.5px}
+.crit div:nth-child(odd){color:var(--ink2)}.crit div:nth-child(even){font-weight:700;text-align:right}
+
+#tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--surface);border-radius:8px;padding:6px 9px;font-size:12px;line-height:1.45;display:none;max-width:260px}
+
+@media (max-width:1080px){.g6{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr}}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;padding:12px;gap:8px}
+  .nav{flex-direction:row;overflow-x:auto;gap:4px}.nav .cap,.side .foot,.nav a .who{display:none}.nav a{white-space:nowrap}
+  .top{position:static;padding:12px 16px}.filters{margin-left:0}
+  .page{padding:16px}
+  .pipe{grid-template-columns:1fr}.pipe .arr{transform:rotate(90deg);height:20px}
+  .hero h2{font-size:24px}.g3{grid-template-columns:1fr}.g6{grid-template-columns:repeat(2,1fr)}.flow{grid-template-columns:repeat(2,1fr)}
+  .br{--lw:104px}
+}
+/* ver.2: 도표·범례·KPI를 누르면 해당 세대 목록으로 이동 */
+.clk{cursor:pointer}
+.sg.clk:hover{filter:brightness(1.12);box-shadow:inset 0 0 0 2px var(--ink)}
+.lb.clk:hover,.legend span.clk:hover,.kpi.clk:hover .l{text-decoration:underline}
+.legend span.clk{cursor:pointer}
+.xchip{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:1px 6px 1px 8px;border-radius:10px;background:var(--line2);color:var(--ink2);font-size:12px;font-weight:500}
+.xchip button{border:0;background:none;cursor:pointer;color:var(--ink3);padding:0 2px;font-size:13px;line-height:1}
+/* ver.3: 김태경 님 대시보드(arrears-web) 요소 — 보조 KPI, 체납액 상위 지자체, 세대별 조치 진행 점 */
+.g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:1080px){.g4{grid-template-columns:repeat(2,1fr)}}
+.dt{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:middle}
+.dt.d2{background:var(--bar)}
+.dt.d1{border:2px solid var(--s-hold);background:transparent}
+.dt.d0{width:9px;height:2px;border-radius:1px;background:var(--line)}
+td.dc,th.dc{text-align:center;padding-left:4px;padding-right:4px}
+th.dc{white-space:normal;word-break:keep-all;line-height:1.2;min-width:46px;max-width:56px;font-size:10.5px}
+/* ver.4: 세대 목록 요약(ver.2 모양) · 상세(ver.3 모양) 전환 */
+#v-list.list-sum .det-only{display:none}
+/* ver.5: 데이터 넣기 */
+.drop{border:2px dashed var(--line);border-radius:10px;padding:22px 14px;text-align:center;color:var(--ink2);cursor:pointer;margin-top:10px;font-size:13px}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.drop small{color:var(--ink3)}
+.dline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font-size:13px;color:var(--ink2)}
+.dline input[type=date]{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.dinfo{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12.5px}.dinfo div:nth-child(odd){color:var(--ink2)}
+.dmsg{margin-top:10px;font-size:12.5px}.dmsg.err{color:var(--s-miss)}.dmsg.ok{color:var(--s-ok)}
+.srcbadge{display:inline-block;font-size:11px;border-radius:99px;padding:1px 8px;margin-left:6px;background:var(--line2);color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="logo">1</div><div><b>1팀 체납관리</b><small>전세임대 AI Agent PoC</small></div></div>
+    <nav class="nav" id="nav">
+      <div class="cap">현황</div>
+      <a href="#home" data-v="home"><span class="dot" style="background:var(--accent)"></span>전체 현황</a>
+      <a href="#list" data-v="list"><span class="dot"></span>세대 목록</a>
+      <a href="#data" data-v="data"><span class="dot" style="background:var(--s-hold)"></span>데이터 넣기</a>
+      <div class="cap">Agent 흐름</div>
+      <a href="#a01" data-v="a01"><span class="dot" style="background:var(--kim)"></span>① 데이터 통합<span class="who">김태경</span></a>
+      <a href="#a02" data-v="a02"><span class="dot" style="background:var(--shin)"></span>② 대상자 분류<span class="who">신미림</span></a>
+      <a href="#a05" data-v="a05"><span class="dot" style="background:var(--yeo)"></span>③ 월 결산 보고<span class="who">여현서</span></a>
+      <div class="cap">팀</div>
+      <a href="#team" data-v="team"><span class="dot"></span>팀 · 협업 규칙</a>
+    </nav>
+    <div class="foot"><span class="badge">가상 데이터</span><br>기준일 <span id="fbase"></span><br>LH AI Workflow 워크숍 1팀</div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <div><h1 id="vtitle">전체 현황</h1><div class="sub" id="vsub"></div></div>
+      <div class="filters" id="filters">
+        <select id="fSido" aria-label="시도"><option value="">시도 전체</option><option>경기도</option><option>인천광역시</option></select>
+        <select id="fGu" aria-label="지자체"><option value="">지자체 전체</option></select>
+        <div class="seg" id="fCon" role="group" aria-label="계약 구분"><button data-k="" class="on">전체</button><button data-k="계약">계약</button><button data-k="해약">해약</button></div>
+        <button class="reset" id="fReset" hidden>초기화</button>
+      </div>
+    </div>
+
+    <div class="page">
+      <!-- HOME -->
+      <section class="view" id="v-home">
+        <div class="hero"><div class="eye"><i></i><span id="heroEye">전세임대 체납관리 · 2026년 10월</span></div><h2>이번 달 체납세대,<br><em>어디까지 챙겼을까요?</em></h2><p>흩어진 체납 자료를 하나로 합치고, 조치가 필요한 세대를 골라, 월 결산 보고까지 잇는 1팀의 AI Agent 흐름을 한 화면에 모았어요.</p></div>
+        <div class="pipe">
+          <a class="pc" href="#a01" style="--c:var(--kim)"><div class="step">① A01</div><b>데이터 통합</b><div class="own">김태경 · 원천 9종을 계약번호로 통합</div><div class="big" id="p1"></div><div class="out">→ 체납 통합 Excel</div></a>
+          <div class="arr">→</div>
+          <a class="pc" href="#a02" style="--c:var(--shin)"><div class="step">② A02 ~ A04</div><b>대상자 분류</b><div class="own">신미림 · 분류 → 예외 → 조치사항</div><div class="big" id="p2"></div><div class="out">→ 대상자별 조치사항 Excel</div></a>
+          <div class="arr">→</div>
+          <a class="pc" href="#a05" style="--c:var(--yeo)"><div class="step">③ A05</div><b>월 결산 보고</b><div class="own">여현서 · 지표 계산 → 보고서</div><div class="big" id="p3"></div><div class="out">→ 월 체납관리 현황 보고서</div></a>
+        </div>
+        <div class="grid g6" id="kpis"></div>
+        <div class="grid g4 mt" id="kpis2"></div>
+        <div class="grid g2 mt">
+          <div class="card"><h3>최종분류별 관리 상태</h3><p class="src">세대 수 · 신미림 분류 기준을 여현서 10월 지표가 이어받은 결과</p><div class="legend" id="lgState"></div><div class="bars" id="chCls"></div></div>
+          <div class="card"><h3>다음에 할 조치</h3><p class="src">관리필요 세대의 다음 할 일 · 빨강은 2개월 넘게 진행이 없는 누락 의심</p><div class="bars" id="chNextHome"></div></div>
+        </div>
+        <div class="card mt"><h3>9월 → 10월 체납세대 흐름</h3><p class="src">전체 기준 (필터와 무관) · 여현서 A05 지표계산 전월대비</p><div class="flow" id="flow"></div></div>
+      </section>
+
+      <!-- A01 -->
+      <section class="view" id="v-a01">
+        <p class="lead">wise에서 내려받은 원천 Excel 9종을 계약번호로 이어 계약 1건을 1행으로 만든 단계입니다. 뒤 단계(분류, 보고)가 모두 이 파일을 이어받습니다.</p>
+        <div class="grid g2">
+          <div class="card"><h3>조치 단계별 진행</h3><p class="src">통합데이터의 조치 진행 열 · 오른쪽 숫자 = 완료 세대 · 연한 색 = 대상이지만 아직 안 함</p><div class="legend"><span><i style="background:var(--bar)"></i>완료</span><span><i style="background:var(--bar-soft)"></i>대상 · 미수행</span></div><div class="bars" id="chStage"></div></div>
+          <div class="card"><h3>파일별 매핑 결과</h3><p class="src" id="mapSrc"></p><div class="tw"><table id="tbFiles"></table></div></div>
+        </div>
+        <div class="card mt"><h3>현재 단계 분포</h3><p class="src">계약별로 가장 뒤까지 진행한 조치 단계</p><div class="bars" id="chCur"></div></div>
+      </section>
+
+      <!-- A02 -->
+      <section class="view" id="v-a02">
+        <p class="lead">통합 파일을 받아 체납기간과 보증금잠식률로 대상자를 나누고, 꾸준히 납부 중인 세대는 보류로 빼고, 세대별로 다음에 할 조치를 정하는 단계입니다.</p>
+        <div class="grid g2">
+          <div class="card"><h3>최종분류별 세대</h3><p class="src">처리과정 뒤 단계부터 · 색은 관리 상태</p><div class="legend" id="lgState2"></div><div class="bars" id="chCls2"></div></div>
+          <div class="card"><h3>판단 기준값</h3><p class="src">팀원/신미림/체납관리_기준값.json · 숫자만 바꾸면 분류도구가 바뀐 기준으로 분류</p><div class="crit" id="crit"></div>
+            <div class="note mt">조치 순서: 1차 납부최고 → 2차 납부최고 → 가옥명도최고 → 분과심의 → 소송통고 1차 → 제소의뢰 → 소송통고 2차 → 본안소송 → 판결. 앞 단계를 안 했으면 가장 앞의 안 한 단계를 안내합니다.</div></div>
+        </div>
+        <div class="grid g2 mt">
+          <div class="card"><h3>체납기간별</h3><p class="src">단기 3~5개월 · 중기 6~11개월 · 장기 12개월 이상</p><div class="bars" id="chTerm"></div></div>
+          <div class="card"><h3>익월 재검토 세대</h3><p class="src">분과심의 보류 · 소송유예 · 생활안정지원 → 다음 달에 같은 기준으로 다시 검토</p><div class="bars" id="chHold"></div></div>
+        </div>
+      </section>
+
+      <!-- A05 -->
+      <section class="view" id="v-a05">
+        <p class="lead" id="a05Lead">분류 결과를 받아 월 결산 지표를 계산하고 보고서 초안을 만드는 단계입니다. 아래 수치는 9월 결과에 10월 변동을 가상으로 적용한 테스트용 값입니다.</p>
+        <div class="grid g2">
+          <div class="card"><h3>지자체별 체납세대</h3><p class="src">세대 수 많은 순 · 색은 관리 상태</p><div class="legend" id="lgState3"></div><div class="bars" id="chGu"></div></div>
+          <div>
+            <div class="card"><h3>다음에 할 조치 (11월 계획 근거)</h3><p class="src">관리필요 세대 · 괄호는 9월 세대 수(전체 기준)</p><div class="bars" id="chNext"></div></div>
+            <div class="card mt"><h3>10월에 수행한 조치</h3><p class="src">전체 기준 (필터와 무관) · 가상 실적</p><div class="tw"><table id="tbDone"></table></div></div>
+            <div class="card mt"><h3>지자체별 체납액 상위 10</h3><p class="src">체납액 큰 순 · 오른쪽 숫자 단위 만원</p><div class="bars" id="chAmt"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LIST -->
+      <section class="view list-sum" id="v-list">
+        <div class="card">
+          <div class="tbar">
+            <div class="seg" id="tMode" role="group" aria-label="목록 보기"><button type="button" data-m="sum" class="on" title="기본 열만 보기 (ver.2 모양)">요약</button><button type="button" data-m="det" title="세대별 9단계 조치 진행까지 보기 (ver.3 모양)">상세</button></div>
+            <input id="q" type="search" placeholder="계약번호 끝 3자리 · 지자체 · 조치 검색" style="min-width:240px">
+            <select id="tCls"><option value="">최종분류 전체</option></select>
+            <select id="tState"><option value="">관리 상태 전체</option></select>
+            <select id="tTerm" class="det-only"><option value="">체납기간 전체</option><option value="0">3개월 미만</option><option value="1">3~5개월 (단기)</option><option value="2">6~11개월 (중기)</option><option value="3">12개월 이상 (장기)</option></select>
+            <select id="tCur" class="det-only"><option value="">현재 단계 전체</option></select>
+            <span class="cnt" id="tCnt"></span>
+          </div>
+          <div class="legend det-only"><span><i class="dt d2"></i>완료</span><span><i class="dt d1"></i>대상(아직 안 함)</span><span><i class="dt d0"></i>해당 없음</span><span style="color:var(--ink3)" id="dotSrc">· 오른쪽 조치 진행 열은 김태경 님 A01 통합데이터 기준</span></div>
+          <div class="tw"><table id="tbList"></table></div>
+          <button class="more" id="more" hidden>더 보기</button>
+        </div>
+        <p class="src" style="margin-top:10px;color:var(--ink3);font-size:12px">웹에 공개되는 페이지라 계약자 이름·주민번호·주소·연락처는 싣지 않았고 계약번호는 가운데를 가렸습니다.</p>
+      </section>
+
+      <!-- DATA (ver.5, ver.6: ① 원본 Excel · ② 통합 실행 결과 순서로 바꿈) -->
+      <section class="view" id="v-data">
+        <p class="lead">새 체납 데이터 Excel을 넣으면 이 페이지의 모든 화면(전체 현황 · 세대 목록 · 각 단계)이 그 데이터로 바뀝니다. <b>파일은 이 브라우저 안에서만 읽고 어디에도 보내지 않습니다.</b> 페이지를 새로고침하면 기본(가상) 데이터로 돌아갑니다.</p>
+        <div class="grid g2">
+          <div class="card"><h3>① 원본 Excel 9개 넣기</h3>
+            <p class="src">wise에서 받은 체납집계표 · 납부최고서 1·2차 · 가옥명도최고 · 분과심의 · 소송통고 1·2차 · 제소자 · 소송정보. 이 페이지가 통합(A01)과 분류(A02~A04)까지 합니다 — 분류도구 ver.6과 같은 규칙</p>
+            <div class="dline"><label for="dBase">기준일(월말 결산일)</label><input type="date" id="dBase"><span style="color:var(--ink3)">판단 기준값은 「② 대상자 분류」 화면의 값 사용 · <code>체납관리_기준값.json</code>을 같이 넣으면 그 값 사용</span></div>
+            <div class="drop" id="dropB">원본 파일들을 여기에 끌어다 놓거나 눌러서 선택<br><small>파일 이름에 "오류"가 들어간 파일은 제외 · 체납집계표는 꼭 필요</small></div>
+            <input type="file" id="pickB" accept=".xlsx,.json" multiple hidden>
+            <div class="dmsg" id="msgB"></div>
+          </div>
+          <div class="card"><h3>② 통합 실행 결과 2개 넣기 <span class="srcbadge">권장</span></h3>
+            <p class="src"><code>팀원/취합/체납관리_통합실행/체납관리_실행.bat</code>이 <code>결과/&lt;연월&gt;/</code>에 만든 두 파일</p>
+            <ul class="rules"><li><code>체납관리_통합데이터_YYYYMM.xlsx</code> (A01 · 김태경)</li><li><code>체납관리_분류결과_YYYYMM.xlsx</code> (A02~A04 · 신미림)</li></ul>
+            <div class="drop" id="dropA">두 파일을 여기에 끌어다 놓거나 눌러서 선택<br><small>분류도구(HTML·Python)가 만든 분류결과 Excel도 됩니다</small></div>
+            <input type="file" id="pickA" accept=".xlsx" multiple hidden>
+            <div class="dmsg" id="msgA"></div>
+          </div>
+        </div>
+        <div class="card mt"><h3>지금 화면에 쓰인 데이터</h3><div class="dinfo" id="dInfo"></div>
+          <button class="more" id="dReset" type="button">기본(가상) 데이터로 되돌리기</button></div>
+      </section>
+
+      <!-- TEAM -->
+      <section class="view" id="v-team">
+        <div class="grid g2">
+          <div class="card"><h3>팀원과 맡은 일</h3><p class="src">LH AI Workflow 워크숍 · 인천지역본부 전세임대팀</p>
+            <div class="mem" style="--c:var(--kim)"><b>김태경</b> <span class="role">· A01 데이터 통합</span><div class="role">원천 9종을 계약번호로 통합, 매칭 결과 검토</div><div class="links"><a class="lk" href="../데이터/체납관리_통합데이터_20261113.xlsx">통합데이터 Excel</a><a class="lk" href="../파이프라인/(최종)전세임대 체납관리 통합 PRD.pdf">통합 PRD</a></div></div>
+            <div class="mem" style="--c:var(--shin)"><b>신미림</b> <span class="role">· A02 대상자 분류 · A03 예외처리 · A04 조치사항</span><div class="role">분류 기준 관리, 분류도구(HTML · Python), 단계별 표본 검토</div><div class="links"><a class="lk" href="../팀원/신미림/체납관리_분류도구_ver.5.html">분류도구 ver.5 열기</a><a class="lk" href="../참고자료/A01~A05기준 및 필요추가정보_ver.3.txt">분류 기준 ver.3</a></div></div>
+            <div class="mem" style="--c:var(--yeo)"><b>여현서</b> <span class="role">· A05 월 결산 보고</span><div class="role">지표 계산, 도표, 보고서 초안과 검토</div><div class="links"><a class="lk" href="../팀원/여현서/A05_지표계산_202610(가상).xlsx">10월 지표계산</a><a class="lk" href="../팀원/여현서/A05_월결산보고서_202609(가상)_ver1.hwpx">9월 보고서(hwpx)</a></div></div>
+          </div>
+          <div class="card"><h3>협업 규칙</h3><p class="src">저장소 hyeonseo439/lh-workshop-migrated</p>
+            <ul class="rules">
+              <li>폴더 단위로 작업을 나눕니다: <code>팀원/김태경/</code>, <code>팀원/신미림/</code>, <code>팀원/여현서/</code>. 합의된 최종본은 <code>팀원/취합/</code>에 둡니다.</li>
+              <li><code>dashboard/</code>는 공용 홈페이지입니다. 각자 자기 폴더 안의 파일만 고쳐 충돌을 피하고, 공용 파일(루트, <code>dashboard/</code>, <code>데이터/</code>, <code>파이프라인/</code>)은 고치기 전에 서로 알립니다.</li>
+              <li>push 전에 <code>git pull</code>로 최신 상태를 받습니다.</li>
+              <li>기존 파일은 덮어쓰지 않고 이름에 <code>ver.N</code>을 붙여 새로 올립니다.</li>
+              <li>실제 체납 데이터나 개인정보는 올리지 않습니다. 가상 데이터만 씁니다.</li>
+            </ul>
+            <div class="note mt">이 페이지의 숫자는 <code>데이터/체납관리_통합데이터_20261113.xlsx</code>, <code>팀원/신미림/체납관리_기준값.json</code>, <code>팀원/여현서/A05_지표계산_202610(가상).xlsx</code>에서 뽑아 넣은 값입니다. 원본이 바뀌면 페이지를 다시 만들어야 합니다.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+const D = {"base":"2026-10-31","made":"2026-11-13 08:54","mapFail":0,"STAGES":["납부최고 1차","납부최고 2차","가옥명도 최고","분과심의","소송통고 1차","제소의뢰(1단계)","소송통고 2차","본안소송(2단계)","판결(3단계)"],"integ":[["전세(인천연수구)","해약","222000000","가옥명도 최고"],["전세(부천)","해약","222222220","본안소송(2단계)"],["전세(인천서구)","계약","110000000","조치 전"],["전세(고양)","계약","222222220","본안소송(2단계)"],["전세(고양)","해약","222222222","판결(3단계)"],["전세(인천연수구)","계약","110000000","조치 전"],["전세(수원장안)","계약","222220000","소송통고 1차"],["전세(수원장안)","해약","222220000","소송통고 1차"],["전세(안산)","계약","110000000","조치 전"],["전세(인천부평구)","계약","222220000","소송통고 1차"],["전세(시흥)","해약","222000000","가옥명도 최고"],["전세(수원권선)","계약","222222000","제소의뢰(1단계)"],["전세(시흥)","계약","222222222","판결(3단계)"],["전세(시흥)","계약","222222222","판결(3단계)"],["전세(인천동구)","계약","222202000","제소의뢰(1단계)"],["전세(인천연수구)","계약","110000000","조치 전"],["전세(수원장안)","계약","222222200","소송통고 2차"],["전세(인천서구)","해약","222222220","본안소송(2단계)"],["전세(수원팔달)","계약","222222220","본안소송(2단계)"],["전세(인천미추홀구)","계약","221000000","납부최고 2차"],["전세(인천미추홀구)","계약","222222222","판결(3단계)"],["전세(고양)","계약","110000000","조치 전"],["전세(인천계양구)","해약","222222200","소송통고 2차"],["전세(인천남동구)","계약","222222000","제소의뢰(1단계)"],["전세(인천동구)","계약","222222220","본안소송(2단계)"],["전세(인천연수구)","계약","222202000","제소의뢰(1단계)"],["전세(안산)","계약","222200000","분과심의"],["전세(인천연수구)","해약","222222222","판결(3단계)"],["전세(인천남동구)","계약","222200000","분과심의"],["전세(안산)","계약","221200000","분과심의"],["전세(수원장안)","계약","222222220","본안소송(2단계)"],["전세(고양)","계약","221000000","납부최고 2차"],["전세(시흥)","계약","110002000","제소의뢰(1단계)"],["전세(시흥)","해약","110000000","조치 전"],["전세(안산)","계약","221200000","분과심의"],["전세(인천동구)","계약","222220000","소송통고 1차"],["전세(고양)","계약","222200000","분과심의"],["전세(부천)","계약","221202022","판결(3단계)"],["전세(인천서구)","계약","210002000","제소의뢰(1단계)"],["전세(시흥)","계약","110002000","제소의뢰(1단계)"],["전세(인천동구)","계약","222222222","판결(3단계)"],["전세(수원영통)","계약","222200000","분과심의"],["전세(인천중구)","계약","210000000","납부최고 1차"],["전세(하남)","계약","110000000","조치 전"],["전세(수원권선)","계약","222222222","판결(3단계)"],["전세(인천미추홀구)","계약","222222200","소송통고 2차"],["전세(부천)","계약","222200000","분과심의"],["전세(인천동구)","계약","222222022","판결(3단계)"],["전세(인천서구)","계약","110002022","판결(3단계)"],["전세(인천연수구)","계약","222222020","본안소송(2단계)"],["전세(인천동구)","계약","222202000","제소의뢰(1단계)"],["전세(화성)","계약","221200000","분과심의"],["전세(고양)","해약","221200000","분과심의"],["전세(수원장안)","계약","222000000","가옥명도 최고"],["전세(고양)","계약","222000000","가옥명도 최고"],["전세(용인)","계약","222222220","본안소송(2단계)"],["전세(고양)","계약","222222220","본안소송(2단계)"],["전세(하남)","계약","221202022","판결(3단계)"],["전세(안산)","계약","222222200","소송통고 2차"],["전세(인천부평구)","계약","210002000","제소의뢰(1단계)"],["전세(용인)","계약","222222220","본안소송(2단계)"],["전세(부천)","계약","222222222","판결(3단계)"],["전세(부천)","계약","210000000","납부최고 1차"],["전세(시흥)","계약","222222022","판결(3단계)"],["전세(시흥)","해약","222222222","판결(3단계)"],["전세(인천중구)","계약","222222000","제소의뢰(1단계)"],["전세(인천부평구)","계약","221200000","분과심의"],["전세(수원장안)","계약","222222222","판결(3단계)"],["전세(수원권선)","계약","222200000","분과심의"],["전세(광명)","해약","110000000","조치 전"],["전세(인천서구)","해약","110000000","조치 전"],["전세(인천계양구)","계약","110002022","판결(3단계)"],["전세(인천부평구)","계약","210000000","납부최고 1차"],["전세(인천부평구)","해약","222000000","가옥명도 최고"],["전세(화성)","계약","222202000","제소의뢰(1단계)"],["전세(하남)","계약","222222222","판결(3단계)"],["전세(인천남동구)","계약","222200000","분과심의"],["전세(인천미추홀구)","계약","222222200","소송통고 2차"],["전세(인천동구)","계약","222222020","본안소송(2단계)"],["전세(용인)","해약","221202020","본안소송(2단계)"],["전세(인천서구)","계약","222200000","분과심의"],["전세(하남)","계약","222222000","제소의뢰(1단계)"],["전세(안산)","해약","222220000","소송통고 1차"],["전세(고양)","해약","222200000","분과심의"],["전세(부천)","계약","110002000","제소의뢰(1단계)"],["전세(수원장안)","해약","110000000","조치 전"],["전세(수원팔달)","계약","110002022","판결(3단계)"],["전세(인천계양구)","계약","222222000","제소의뢰(1단계)"],["전세(광명)","계약","222222200","소송통고 2차"],["전세(하남)","계약","222200000","분과심의"],["전세(인천연수구)","계약","222200000","분과심의"],["전세(수원팔달)","계약","222222200","소송통고 2차"],["전세(인천연수구)","계약","210000000","납부최고 1차"],["전세(수원영통)","계약","222222220","본안소송(2단계)"],["전세(수원장안)","계약","221202020","본안소송(2단계)"],["전세(수원팔달)","계약","210000000","납부최고 1차"],["전세(안산)","해약","221200000","분과심의"],["전세(수원장안)","계약","210000000","납부최고 1차"],["전세(광명)","계약","110000000","조치 전"],["전세(시흥)","계약","210000000","납부최고 1차"],["전세(수원장안)","해약","222220000","소송통고 1차"],["전세(하남)","계약","222200000","분과심의"],["전세(화성)","계약","222222000","제소의뢰(1단계)"],["전세(광명)","해약","222222200","소송통고 2차"],["전세(고양)","해약","222222220","본안소송(2단계)"],["전세(하남)","계약","222222222","판결(3단계)"],["전세(인천계양구)","계약","110000000","조치 전"],["전세(인천계양구)","계약","210002020","본안소송(2단계)"],["전세(인천서구)","계약","110000000","조치 전"],["전세(인천남동구)","계약","210000000","납부최고 1차"],["전세(시흥)","계약","210002000","제소의뢰(1단계)"],["전세(시흥)","해약","222222200","소송통고 2차"],["전세(화성)","해약","222222000","제소의뢰(1단계)"],["전세(인천부평구)","해약","222222022","판결(3단계)"],["전세(하남)","계약","110000000","조치 전"],["전세(수원영통)","계약","222222220","본안소송(2단계)"],["전세(인천중구)","계약","222222022","판결(3단계)"],["전세(인천남동구)","계약","221200000","분과심의"],["전세(인천미추홀구)","계약","221200000","분과심의"],["전세(부천)","계약","222220000","소송통고 1차"],["전세(고양)","계약","221202000","제소의뢰(1단계)"],["전세(인천중구)","계약","110000000","조치 전"],["전세(인천동구)","계약","222222000","제소의뢰(1단계)"],["전세(부천)","계약","222222222","판결(3단계)"],["전세(인천남동구)","해약","222222000","제소의뢰(1단계)"],["전세(인천계양구)","해약","222202020","본안소송(2단계)"],["전세(부천)","계약","222222200","소송통고 2차"],["전세(하남)","계약","110000000","조치 전"],["전세(광명)","계약","222200000","분과심의"],["전세(인천남동구)","계약","222200000","분과심의"],["전세(부천)","계약","210002022","판결(3단계)"],["전세(광명)","해약","222222000","제소의뢰(1단계)"],["전세(인천계양구)","해약","222222022","판결(3단계)"],["전세(인천동구)","계약","222200000","분과심의"],["전세(고양)","계약","222222220","본안소송(2단계)"],["전세(수원권선)","해약","222222000","제소의뢰(1단계)"],["전세(인천미추홀구)","해약","222222000","제소의뢰(1단계)"],["전세(하남)","계약","222220000","소송통고 1차"],["전세(안산)","해약","210000000","납부최고 1차"],["전세(수원팔달)","계약","221000000","납부최고 2차"],["전세(인천중구)","계약","222000000","가옥명도 최고"],["전세(인천서구)","계약","210002022","판결(3단계)"],["전세(부천)","계약","222222220","본안소송(2단계)"],["전세(고양)","해약","110002020","본안소송(2단계)"],["전세(고양)","계약","222222220","본안소송(2단계)"],["전세(인천부평구)","계약","222200000","분과심의"],["전세(고양)","계약","222222200","소송통고 2차"],["전세(수원장안)","계약","222222022","판결(3단계)"],["전세(인천중구)","해약","222220000","소송통고 1차"],["전세(수원권선)","계약","222200000","분과심의"],["전세(부천)","해약","221202020","본안소송(2단계)"],["전세(고양)","계약","222222000","제소의뢰(1단계)"],["전세(인천중구)","계약","110002000","제소의뢰(1단계)"],["전세(수원팔달)","계약","222200000","분과심의"],["전세(안산)","계약","222222222","판결(3단계)"],["전세(수원영통)","계약","222222000","제소의뢰(1단계)"],["전세(인천계양구)","계약","222202022","판결(3단계)"],["전세(광명)","계약","222222222","판결(3단계)"],["전세(수원팔달)","해약","210002000","제소의뢰(1단계)"],["전세(부천)","계약","110000000","조치 전"],["전세(하남)","계약","222222022","판결(3단계)"],["전세(수원팔달)","계약","222222020","본안소송(2단계)"],["전세(수원영통)","계약","222222200","소송통고 2차"],["전세(고양)","계약","222222220","본안소송(2단계)"],["전세(인천연수구)","계약","110000000","조치 전"],["전세(수원팔달)","해약","110000000","조치 전"],["전세(인천중구)","해약","222222220","본안소송(2단계)"],["전세(인천계양구)","계약","222222000","제소의뢰(1단계)"],["전세(시흥)","계약","222222200","소송통고 2차"],["전세(안산)","계약","210000000","납부최고 1차"],["전세(시흥)","계약","222222000","제소의뢰(1단계)"],["전세(수원팔달)","계약","222222220","본안소송(2단계)"],["전세(안산)","계약","222200000","분과심의"],["전세(고양)","계약","222222222","판결(3단계)"],["전세(인천서구)","계약","221000000","납부최고 2차"],["전세(안산)","해약","110000000","조치 전"],["전세(인천동구)","계약","222222220","본안소송(2단계)"],["전세(시흥)","계약","222200000","분과심의"],["전세(인천중구)","계약","222222220","본안소송(2단계)"],["전세(인천부평구)","계약","110000000","조치 전"],["전세(용인)","계약","222222222","판결(3단계)"],["전세(인천계양구)","계약","210002000","제소의뢰(1단계)"],["전세(수원영통)","계약","222220000","소송통고 1차"],["전세(인천남동구)","해약","222202020","본안소송(2단계)"],["전세(화성)","해약","110000000","조치 전"],["전세(인천부평구)","계약","222202022","판결(3단계)"],["전세(안산)","계약","210000000","납부최고 1차"],["전세(시흥)","계약","221202020","본안소송(2단계)"],["전세(인천계양구)","계약","222222020","본안소송(2단계)"],["전세(수원권선)","계약","210000000","납부최고 1차"],["전세(화성)","계약","110000000","조치 전"],["전세(수원권선)","계약","110002000","제소의뢰(1단계)"],["전세(인천서구)","해약","222222220","본안소송(2단계)"],["전세(안산)","계약","110000000","조치 전"],["전세(고양)","계약","110000000","조치 전"],["전세(인천연수구)","계약","110000000","조치 전"],["전세(인천남동구)","계약","221200000","분과심의"],["전세(인천서구)","해약","222222000","제소의뢰(1단계)"],["전세(인천동구)","계약","222222000","제소의뢰(1단계)"],["전세(부천)","계약","222222220","본안소송(2단계)"],["전세(인천계양구)","계약","222222022","판결(3단계)"],["전세(인천서구)","계약","222222000","제소의뢰(1단계)"],["전세(부천)","해약","221200000","분과심의"],["전세(안산)","계약","110000000","조치 전"],["전세(수원팔달)","계약","222222000","제소의뢰(1단계)"],["전세(인천부평구)","계약","222222000","제소의뢰(1단계)"],["전세(인천남동구)","해약","210000000","납부최고 1차"],["전세(하남)","해약","210000000","납부최고 1차"],["전세(인천계양구)","해약","110000000","조치 전"],["전세(인천중구)","계약","222222200","소송통고 2차"],["전세(용인)","계약","222222200","소송통고 2차"],["전세(부천)","해약","222222022","판결(3단계)"],["전세(시흥)","계약","221202020","본안소송(2단계)"],["전세(부천)","계약","221200000","분과심의"],["전세(수원팔달)","계약","222200000","분과심의"],["전세(인천부평구)","계약","222222000","제소의뢰(1단계)"],["전세(인천서구)","계약","222222200","소송통고 2차"],["전세(인천서구)","계약","110002022","판결(3단계)"],["전세(시흥)","계약","110002000","제소의뢰(1단계)"],["전세(광명)","계약","110000000","조치 전"],["전세(인천부평구)","계약","210000000","납부최고 1차"],["전세(하남)","계약","222222000","제소의뢰(1단계)"],["전세(수원팔달)","계약","210000000","납부최고 1차"],["전세(시흥)","계약","222222022","판결(3단계)"],["전세(고양)","해약","110000000","조치 전"],["전세(인천계양구)","계약","222222222","판결(3단계)"],["전세(시흥)","해약","222222000","제소의뢰(1단계)"],["전세(인천중구)","계약","222200000","분과심의"],["전세(수원장안)","계약","110002022","판결(3단계)"],["전세(인천계양구)","계약","222220000","소송통고 1차"],["전세(화성)","계약","222222222","판결(3단계)"],["전세(시흥)","해약","110000000","조치 전"],["전세(화성)","계약","222202022","판결(3단계)"],["전세(인천중구)","계약","221200000","분과심의"],["전세(광명)","계약","222222220","본안소송(2단계)"],["전세(하남)","계약","222000000","가옥명도 최고"],["전세(안산)","계약","222222222","판결(3단계)"],["전세(수원영통)","해약","221202022","판결(3단계)"],["전세(인천연수구)","계약","222222220","본안소송(2단계)"],["전세(수원장안)","해약","222222000","제소의뢰(1단계)"],["전세(광명)","계약","110002022","판결(3단계)"],["전세(시흥)","계약","222200000","분과심의"],["전세(인천연수구)","계약","222200000","분과심의"],["전세(고양)","계약","110000000","조치 전"],["전세(하남)","계약","222202020","본안소송(2단계)"],["전세(수원장안)","계약","110000000","조치 전"],["전세(인천동구)","계약","222222220","본안소송(2단계)"],["전세(인천남동구)","계약","222000000","가옥명도 최고"],["전세(부천)","계약","222222222","판결(3단계)"],["전세(광명)","계약","222220000","소송통고 1차"],["전세(시흥)","계약","222222000","제소의뢰(1단계)"],["전세(수원팔달)","계약","222222200","소송통고 2차"],["전세(수원영통)","계약","210002022","판결(3단계)"],["전세(수원영통)","해약","221202000","제소의뢰(1단계)"],["전세(인천연수구)","계약","221200000","분과심의"],["전세(인천중구)","계약","110002020","본안소송(2단계)"],["전세(용인)","계약","222200000","분과심의"],["전세(인천계양구)","해약","222222022","판결(3단계)"],["전세(고양)","계약","222222000","제소의뢰(1단계)"],["전세(고양)","계약","210000000","납부최고 1차"],["전세(인천동구)","계약","222200000","분과심의"],["전세(인천계양구)","계약","221202022","판결(3단계)"],["전세(수원영통)","계약","110000000","조치 전"],["전세(인천미추홀구)","계약","222220000","소송통고 1차"],["전세(인천부평구)","계약","210000000","납부최고 1차"],["전세(인천중구)","계약","110002022","판결(3단계)"],["전세(인천남동구)","계약","222200000","분과심의"],["전세(인천서구)","계약","222222220","본안소송(2단계)"],["전세(부천)","해약","222200000","분과심의"],["전세(인천연수구)","계약","110002000","제소의뢰(1단계)"],["전세(인천남동구)","해약","222220000","소송통고 1차"],["전세(인천계양구)","해약","222222022","판결(3단계)"],["전세(인천동구)","계약","210002020","본안소송(2단계)"],["전세(인천계양구)","계약","110000000","조치 전"],["전세(인천동구)","계약","222222220","본안소송(2단계)"],["전세(인천동구)","계약","222222200","소송통고 2차"],["전세(수원권선)","해약","222222220","본안소송(2단계)"],["전세(수원권선)","계약","222222222","판결(3단계)"],["전세(인천계양구)","해약","222220000","소송통고 1차"],["전세(수원권선)","계약","222222220","본안소송(2단계)"],["전세(인천중구)","계약","222222000","제소의뢰(1단계)"],["전세(화성)","계약","222202020","본안소송(2단계)"],["전세(수원영통)","계약","222222220","본안소송(2단계)"],["전세(화성)","계약","222200000","분과심의"],["전세(인천서구)","계약","110000000","조치 전"],["전세(안산)","해약","110002000","제소의뢰(1단계)"],["전세(인천남동구)","계약","222200000","분과심의"],["전세(광명)","계약","222222220","본안소송(2단계)"],["전세(부천)","계약","110002000","제소의뢰(1단계)"],["전세(수원팔달)","해약","222222222","판결(3단계)"],["전세(하남)","계약","222000000","가옥명도 최고"],["전세(수원영통)","계약","222222222","판결(3단계)"],["전세(시흥)","계약","222222220","본안소송(2단계)"],["전세(수원팔달)","계약","221200000","분과심의"],["전세(인천계양구)","해약","222202000","제소의뢰(1단계)"],["전세(화성)","계약","210002020","본안소송(2단계)"],["전세(안산)","계약","110000000","조치 전"],["전세(인천부평구)","계약","222222222","판결(3단계)"],["전세(인천계양구)","해약","222222220","본안소송(2단계)"],["전세(수원장안)","계약","222222020","본안소송(2단계)"],["전세(수원영통)","계약","210000000","납부최고 1차"],["전세(인천계양구)","계약","222222222","판결(3단계)"],["전세(인천서구)","계약","110000000","조치 전"],["전세(광명)","계약","222222220","본안소송(2단계)"],["전세(시흥)","계약","110002000","제소의뢰(1단계)"],["전세(인천미추홀구)","계약","222222022","판결(3단계)"],["전세(수원팔달)","해약","222222200","소송통고 2차"],["전세(부천)","계약","222222000","제소의뢰(1단계)"],["전세(고양)","계약","221200000","분과심의"],["전세(인천중구)","계약","222222222","판결(3단계)"],["전세(시흥)","계약","222222222","판결(3단계)"],["전세(수원장안)","계약","110002020","본안소송(2단계)"],["전세(광명)","계약","222222022","판결(3단계)"],["전세(부천)","계약","222222222","판결(3단계)"],["전세(수원장안)","계약","222222220","본안소송(2단계)"],["전세(수원권선)","계약","222222220","본안소송(2단계)"],["전세(수원장안)","계약","222220000","소송통고 1차"],["전세(고양)","계약","222200000","분과심의"],["전세(수원장안)","계약","222200000","분과심의"],["전세(부천)","계약","110000000","조치 전"],["전세(인천동구)","계약","221202020","본안소송(2단계)"],["전세(인천계양구)","계약","222220000","소송통고 1차"],["전세(인천계양구)","해약","110000000","조치 전"],["전세(안산)","계약","222222222","판결(3단계)"],["전세(하남)","계약","110000000","조치 전"],["전세(안산)","계약","110000000","조치 전"],["전세(화성)","계약","222222000","제소의뢰(1단계)"],["전세(안산)","계약","222200000","분과심의"],["전세(인천동구)","계약","222000000","가옥명도 최고"],["전세(하남)","해약","222000000","가옥명도 최고"],["전세(수원팔달)","계약","222222222","판결(3단계)"],["전세(안산)","계약","222222220","본안소송(2단계)"],["전세(인천서구)","해약","222222020","본안소송(2단계)"],["전세(수원장안)","계약","222222000","제소의뢰(1단계)"],["전세(용인)","해약","222222200","소송통고 2차"],["전세(수원영통)","해약","222222222","판결(3단계)"],["전세(인천부평구)","계약","210000000","납부최고 1차"],["전세(안산)","해약","210002020","본안소송(2단계)"],["전세(인천중구)","계약","222222222","판결(3단계)"],["전세(광명)","계약","222222222","판결(3단계)"],["전세(고양)","계약","222222000","제소의뢰(1단계)"],["전세(수원영통)","계약","110002000","제소의뢰(1단계)"],["전세(인천연수구)","계약","222222220","본안소송(2단계)"],["전세(광명)","계약","222222222","판결(3단계)"],["전세(하남)","계약","110002000","제소의뢰(1단계)"],["전세(인천부평구)","계약","222000000","가옥명도 최고"],["전세(용인)","계약","110000000","조치 전"],["전세(인천동구)","계약","222222220","본안소송(2단계)"],["전세(인천남동구)","계약","110000000","조치 전"],["전세(인천부평구)","해약","222220000","소송통고 1차"],["전세(부천)","해약","110000000","조치 전"],["전세(인천남동구)","계약","222222200","소송통고 2차"],["전세(인천계양구)","계약","221200000","분과심의"],["전세(하남)","계약","222000000","가옥명도 최고"],["전세(용인)","계약","222222200","소송통고 2차"],["전세(인천부평구)","해약","222222220","본안소송(2단계)"],["전세(인천미추홀구)","계약","110000000","조치 전"],["전세(인천중구)","해약","222222022","판결(3단계)"],["전세(인천계양구)","계약","110000000","조치 전"],["전세(부천)","계약","222200000","분과심의"],["전세(하남)","계약","222000000","가옥명도 최고"],["전세(수원영통)","계약","222220000","소송통고 1차"],["전세(수원팔달)","해약","222000000","가옥명도 최고"],["전세(부천)","계약","222222222","판결(3단계)"],["전세(안산)","계약","222222222","판결(3단계)"],["전세(부천)","해약","222222220","본안소송(2단계)"],["전세(인천부평구)","계약","210000000","납부최고 1차"],["전세(인천부평구)","계약","222202000","제소의뢰(1단계)"],["전세(인천남동구)","계약","210000000","납부최고 1차"],["전세(인천동구)","해약","221202022","판결(3단계)"],["전세(수원권선)","계약","222202000","제소의뢰(1단계)"],["전세(인천동구)","계약","222200000","분과심의"],["전세(수원영통)","계약","210000000","납부최고 1차"],["전세(광명)","계약","222000000","가옥명도 최고"],["전세(하남)","계약","110000000","조치 전"],["전세(화성)","계약","221200000","분과심의"],["전세(수원팔달)","계약","110000000","조치 전"],["전세(화성)","계약","222220000","소송통고 1차"],["전세(인천계양구)","계약","222222220","본안소송(2단계)"],["전세(화성)","계약","222222222","판결(3단계)"],["전세(고양)","계약","222222022","판결(3단계)"],["전세(인천남동구)","계약","222222222","판결(3단계)"],["전세(시흥)","계약","210000000","납부최고 1차"],["전세(인천부평구)","계약","222200000","분과심의"],["전세(수원영통)","계약","222222000","제소의뢰(1단계)"],["전세(인천계양구)","계약","222222220","본안소송(2단계)"],["전세(인천중구)","해약","221200000","분과심의"],["전세(하남)","해약","222222220","본안소송(2단계)"],["전세(고양)","계약","222222000","제소의뢰(1단계)"],["전세(인천연수구)","계약","210002000","제소의뢰(1단계)"],["전세(부천)","계약","221202022","판결(3단계)"],["전세(시흥)","계약","210002000","제소의뢰(1단계)"],["전세(인천동구)","계약","222222000","제소의뢰(1단계)"],["전세(인천계양구)","해약","222222222","판결(3단계)"],["전세(수원팔달)","계약","222220000","소송통고 1차"],["전세(안산)","계약","222220000","소송통고 1차"],["전세(고양)","계약","222220000","소송통고 1차"],["전세(수원팔달)","계약","222222022","판결(3단계)"],["전세(인천부평구)","해약","221200000","분과심의"],["전세(인천계양구)","계약","221200000","분과심의"],["전세(용인)","계약","210002022","판결(3단계)"],["전세(인천계양구)","해약","222222022","판결(3단계)"],["전세(수원장안)","해약","221200000","분과심의"],["전세(인천서구)","계약","222222222","판결(3단계)"],["전세(수원장안)","계약","222222000","제소의뢰(1단계)"],["전세(수원영통)","계약","221202022","판결(3단계)"],["전세(인천계양구)","계약","222222000","제소의뢰(1단계)"],["전세(인천중구)","계약","222220000","소송통고 1차"],["전세(고양)","해약","222220000","소송통고 1차"],["전세(인천연수구)","계약","222220000","소송통고 1차"],["전세(수원장안)","계약","222200000","분과심의"],["전세(용인)","해약","210000000","납부최고 1차"],["전세(용인)","계약","222222020","본안소송(2단계)"],["전세(수원장안)","계약","110000000","조치 전"],["전세(인천중구)","계약","110000000","조치 전"],["전세(수원영통)","해약","222222222","판결(3단계)"],["전세(인천연수구)","계약","222200000","분과심의"],["전세(인천연수구)","계약","210000000","납부최고 1차"],["전세(인천서구)","계약","222200000","분과심의"],["전세(인천부평구)","계약","222000000","가옥명도 최고"],["전세(용인)","계약","222222200","소송통고 2차"],["전세(부천)","계약","222220000","소송통고 1차"],["전세(수원팔달)","계약","210002000","제소의뢰(1단계)"],["전세(인천서구)","해약","221200000","분과심의"],["전세(인천서구)","계약","110002022","판결(3단계)"],["전세(고양)","해약","222222000","제소의뢰(1단계)"],["전세(수원팔달)","계약","222000000","가옥명도 최고"],["전세(인천연수구)","해약","210002000","제소의뢰(1단계)"],["전세(광명)","해약","222222222","판결(3단계)"],["전세(안산)","계약","222200000","분과심의"],["전세(고양)","계약","110002020","본안소송(2단계)"],["전세(인천남동구)","계약","222000000","가옥명도 최고"],["전세(하남)","해약","222222220","본안소송(2단계)"],["전세(인천계양구)","해약","222222220","본안소송(2단계)"],["전세(인천부평구)","계약","210002000","제소의뢰(1단계)"],["전세(수원팔달)","계약","222200000","분과심의"],["전세(인천중구)","계약","222220000","소송통고 1차"],["전세(인천동구)","계약","222220000","소송통고 1차"],["전세(화성)","계약","221202020","본안소송(2단계)"],["전세(시흥)","계약","210002000","제소의뢰(1단계)"],["전세(인천서구)","계약","222200000","분과심의"],["전세(인천미추홀구)","계약","222000000","가옥명도 최고"],["전세(화성)","계약","222222220","본안소송(2단계)"],["전세(화성)","계약","110000000","조치 전"],["전세(수원권선)","계약","222220000","소송통고 1차"],["전세(용인)","해약","221200000","분과심의"],["전세(수원팔달)","계약","222222000","제소의뢰(1단계)"],["전세(부천)","계약","222222022","판결(3단계)"],["전세(인천미추홀구)","계약","221200000","분과심의"],["전세(안산)","계약","222222200","소송통고 2차"],["전세(인천중구)","계약","222222000","제소의뢰(1단계)"],["전세(인천남동구)","계약","222222000","제소의뢰(1단계)"],["전세(수원팔달)","계약","110000000","조치 전"],["전세(안산)","계약","222222220","본안소송(2단계)"],["전세(수원장안)","계약","110002000","제소의뢰(1단계)"],["전세(인천연수구)","해약","222222222","판결(3단계)"],["전세(인천연수구)","계약","110000000","조치 전"],["전세(안산)","해약","210000000","납부최고 1차"],["전세(광명)","계약","222200000","분과심의"],["전세(화성)","계약","222000000","가옥명도 최고"],["전세(부천)","계약","222222222","판결(3단계)"],["전세(고양)","해약","110000000","조치 전"],["전세(안산)","계약","110002020","본안소송(2단계)"],["전세(인천중구)","해약","210000000","납부최고 1차"],["전세(인천미추홀구)","해약","110000000","조치 전"],["전세(수원팔달)","계약","110002022","판결(3단계)"],["전세(부천)","해약","222222000","제소의뢰(1단계)"],["전세(용인)","계약","221202022","판결(3단계)"],["전세(고양)","계약","110000000","조치 전"],["전세(인천계양구)","계약","222222200","소송통고 2차"],["전세(인천서구)","계약","222200000","분과심의"],["전세(인천부평구)","계약","110000000","조치 전"],["전세(용인)","계약","222200000","분과심의"],["전세(고양)","계약","110002000","제소의뢰(1단계)"],["전세(인천중구)","계약","210002020","본안소송(2단계)"],["전세(인천미추홀구)","해약","222222220","본안소송(2단계)"],["전세(인천미추홀구)","계약","210002000","제소의뢰(1단계)"],["전세(인천남동구)","해약","222222000","제소의뢰(1단계)"],["전세(수원영통)","계약","210002022","판결(3단계)"],["전세(수원팔달)","계약","222220000","소송통고 1차"],["전세(부천)","계약","110002000","제소의뢰(1단계)"],["전세(인천남동구)","계약","222200000","분과심의"],["전세(부천)","계약","222200000","분과심의"],["전세(인천남동구)","해약","110002000","제소의뢰(1단계)"],["전세(인천연수구)","해약","222222200","소송통고 2차"],["전세(수원영통)","계약","222222200","소송통고 2차"],["전세(수원영통)","계약","222222200","소송통고 2차"],["전세(인천중구)","계약","222220000","소송통고 1차"],["전세(안산)","해약","222222222","판결(3단계)"],["전세(인천남동구)","계약","222222020","본안소송(2단계)"],["전세(부천)","계약","110002000","제소의뢰(1단계)"],["전세(하남)","해약","110002022","판결(3단계)"],["전세(인천동구)","계약","222222200","소송통고 2차"],["전세(수원장안)","계약","110000000","조치 전"],["전세(광명)","계약","210002000","제소의뢰(1단계)"],["전세(용인)","계약","110000000","조치 전"],["전세(인천미추홀구)","계약","222200000","분과심의"],["전세(수원장안)","계약","110002000","제소의뢰(1단계)"],["전세(인천동구)","계약","222222220","본안소송(2단계)"],["전세(수원권선)","계약","210002022","판결(3단계)"]],"files":[["집계표","1. 체납집계표(가상)_500건_v2",500,500],["납부1","2. 납부최고서1차(가상)_500건_v2",500,500],["납부2","3. 납부최고서2차(가상)_선별데이터",407,407],["가옥명도","4. 가옥명도최고(가상)_선별데이터_전체열포함_v2",355,355],["분과심의","5. 분과심의_선별데이터_187건_v3",187,187],["소송통고1","6. 소송통고1차_선별데이터_전체열포함_v3",227,227],["제소","7. 제소자_선별데이터_전체열포함_v3",173,173],["소송통고2","8. 소송통고2차_선별데이터_전체열포함_v3",125,125],["소송정보","9. 소송정보_선별데이터_전체열포함_v3",89,89]],"hh":[["4200····606","전세(인천중구)","계약",27,9831773,"분과심의 대상자",0,"1차 납부최고","2026-04-22","판결","110002022",0,""],["4200····243","전세(수원팔달)","계약",48,6207431,"분과심의 대상자",0,"1차 납부최고","2026-02-18","판결","110002022",0,""],["4200····603","전세(인천계양구)","계약",23,5432146,"분과심의 대상자",0,"1차 납부최고","2025-11-03","판결","110002022",0,"납부 3개월분"],["4200····773","전세(광명)","계약",45,3994046,"분과심의 대상자",0,"1차 납부최고","2026-01-22","판결","110002022",0,""],["4200····580","전세(인천서구)","계약",24,3961102,"분과심의 대상자",0,"1차 납부최고","2025-11-23","판결","110002022",0,""],["4200····225","전세(인천서구)","계약",14,1681317,"장기체납자",0,"1차 납부최고","2026-02-14","판결","110002022",0,""],["4200····110","전세(하남)","해약",13,1439377,"특수채권",0,"제소","2026-06-07","판결","110002022",0,""],["4200····279","전세(광명)","계약",46,8301414,"강제집행 대상자",1,"강제집행 검토","2026-10-15","판결","222222220",0,"10월 조치: 판결 선고 / 판결 선고 → 강제집행 대상자"],["4200····579","전세(수원팔달)","해약",6,1782648,"강제집행 대상자",1,"강제집행 검토","2026-10-17","판결","222222222",0,"10월 조치: 판결 선고 / 판결 선고 → 강제집행 대상자"],["4200····319","전세(수원장안)","계약",39,13545445,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-08","판결","222222220",0,"10월 조치: 판결 선고 / 판결 선고"],["4200····209","전세(시흥)","계약",27,5074031,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-06","판결","222222222",0,"10월 조치: 판결 선고 / 판결 선고"],["4200····679","전세(인천서구)","해약",37,3569240,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-28","판결","222222220",0,"10월 조치: 판결 선고 / 판결 선고"],["4200····702","전세(부천)","계약",43,11585060,"강제집행 대상자",0,"강제집행 검토","2026-08-22","본안소송","222222222",0,"누락 신규 / 납부 1개월분"],["4200····450","전세(고양)","계약",22,6859634,"분과심의 대상자",0,"1차 납부최고","2025-09-26","본안소송","110002020",0,""],["4200····002","전세(인천중구)","계약",35,6297000,"분과심의 대상자",0,"1차 납부최고","2025-09-11","본안소송","110002020",0,""],["4200····328","전세(고양)","해약",45,5016185,"특수채권",0,"제소","2025-12-23","본안소송","110002020",0,""],["4200····144","전세(수원장안)","계약",23,4466449,"분과심의 대상자",0,"1차 납부최고","2025-05-01","본안소송","110002020",0,""],["4200····007","전세(하남)","계약",13,1141058,"장기체납자",0,"분과심의 상정 여부 검토","2025-07-06","본안소송","222202020",0,""],["4200····543","전세(부천)","계약",23,2852379,"강제집행 대상자",1,"강제집행 검토","2026-09-11","본안소송","222222222",0,""],["4200····796","전세(수원영통)","해약",49,17168701,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-01","본안소송","222222222",0,"10월 조치: 소송정보입력"],["4200····863","전세(부천)","해약",48,16141382,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-03","본안소송","222222000",0,"10월 조치: 소송정보입력"],["4200····346","전세(수원팔달)","계약",35,11591906,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-19","본안소송","222222200",0,"10월 조치: 소송정보입력 / 납부 1개월분"],["4200····340","전세(안산)","계약",35,11580632,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-01","본안소송","222222200",0,"10월 조치: 소송정보입력"],["4200····672","전세(인천남동구)","해약",37,10726765,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-22","본안소송","222222000",0,"10월 조치: 소송정보입력"],["4200····217","전세(수원권선)","계약",42,10524213,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-18","본안소송","222222220",0,"10월 조치: 소송정보입력 / 납부 2개월분"],["4200····484","전세(인천미추홀구)","계약",39,9397372,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-20","본안소송","222222200",0,"10월 조치: 소송정보입력"],["4200····391","전세(고양)","해약",28,8936643,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-29","본안소송","222222000",0,"10월 조치: 소송정보입력 / 납부 1개월분"],["4200····324","전세(수원영통)","계약",42,8903379,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-07","본안소송","222222200",0,"10월 조치: 소송정보입력 / 납부 2개월분"],["4200····382","전세(인천부평구)","해약",48,8803566,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-16","본안소송","222222022",0,"10월 조치: 소송정보입력"],["4200····926","전세(고양)","계약",37,7676526,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-13","본안소송","222222200",0,"10월 조치: 소송정보입력 / 납부 3개월분"],["4200····069","전세(인천연수구)","해약",30,7425021,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-27","본안소송","222222222",0,""],["4200····000","전세(수원영통)","계약",41,7034720,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-24","본안소송","222222220",0,""],["4200····765","전세(광명)","계약",48,6930926,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-09","본안소송","222222220",0,"납부 1개월분"],["4200····763","전세(고양)","해약",43,6495592,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-09","본안소송","222222220",0,""],["4200····725","전세(수원장안)","계약",33,5093940,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-19","본안소송","222222200",0,"10월 조치: 소송정보입력"],["4200····364","전세(인천계양구)","계약",48,5042567,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-13","본안소송","222222222",0,""],["4200····763","전세(광명)","계약",17,4873965,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-04","본안소송","222222222",0,"10월 조치: 소송정보입력"],["4200····408","전세(인천계양구)","계약",31,4543950,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-09","본안소송","222222222",0,""],["4200····569","전세(하남)","해약",44,4019583,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-17","본안소송","222222220",0,"납부 1개월분"],["4200····457","전세(수원영통)","계약",17,3954905,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-28","본안소송","222222200",0,"10월 조치: 소송정보입력 / 납부 2개월분"],["4200····382","전세(인천계양구)","계약",28,3731834,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-06","본안소송","222222200",0,"10월 조치: 소송정보입력"],["4200····522","전세(인천중구)","계약",24,3106634,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-31","본안소송","222222222",0,""],["4200····393","전세(인천남동구)","계약",34,2863798,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-29","본안소송","222222200",0,"10월 조치: 소송정보입력"],["4200····158","전세(인천동구)","계약",40,2784510,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-10-25","본안소송","222222200",0,"10월 조치: 소송정보입력"],["4200····717","전세(안산)","계약",31,2443461,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-22","본안소송","222222222",0,""],["4200····561","전세(부천)","해약",3,264616,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-31","본안소송","222222220",0,"납부 3개월분"],["4200····026","전세(수원권선)","계약",46,16169855,"제소대상자",1,"소송정보입력","2026-10-27","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차"],["4200····674","전세(안산)","계약",47,15270090,"강제집행 대상자",1,"강제집행 검토","2026-09-25","2차 소송통고","222222222",0,""],["4200····256","전세(시흥)","계약",46,11959542,"제소대상자",1,"소송정보입력","2026-10-26","2차 소송통고","222222022",0,"10월 조치: 소송통고 2차"],["4200····381","전세(부천)","계약",39,11808240,"제소대상자",1,"소송정보입력","2026-10-20","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차"],["4200····214","전세(인천계양구)","계약",49,11736587,"제소대상자",1,"소송정보입력","2026-10-27","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차"],["4200····035","전세(용인)","계약",45,11061649,"제소대상자",1,"소송정보입력","2026-09-17","2차 소송통고","222222200",0,""],["4200····091","전세(인천동구)","계약",29,9570499,"제소대상자",1,"소송정보입력","2026-10-21","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차"],["4200····047","전세(시흥)","계약",48,6353087,"제소대상자",1,"소송정보입력","2026-10-04","2차 소송통고","222222022",0,"10월 조치: 소송통고 2차"],["4200····096","전세(인천서구)","계약",15,5833057,"제소대상자",1,"소송정보입력","2026-09-01","2차 소송통고","222222200",0,""],["4200····606","전세(수원영통)","계약",35,4869300,"제소대상자",1,"소송정보입력","2026-10-04","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차 / 누락 해소"],["4200····879","전세(수원영통)","계약",19,4636039,"제소대상자",1,"소송정보입력","2026-10-29","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차"],["4200····240","전세(수원영통)","계약",32,4375102,"제소대상자",1,"소송정보입력","2026-08-17","2차 소송통고","222222222",0,"납부 3개월분"],["4200····841","전세(수원팔달)","계약",19,4222564,"제소대상자",1,"소송정보입력","2026-10-13","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차 / 납부 1개월분"],["4200····656","전세(수원팔달)","계약",17,2385453,"제소대상자",1,"소송정보입력","2026-10-09","2차 소송통고","222222022",0,"10월 조치: 소송통고 2차"],["4200····043","전세(인천중구)","계약",15,2366722,"제소대상자",1,"소송정보입력","2026-10-01","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차 / 납부 2개월분"],["4200····085","전세(인천계양구)","계약",15,1973971,"제소대상자",1,"소송정보입력","2026-10-26","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차"],["4200····043","전세(고양)","계약",37,1932991,"제소대상자",1,"소송정보입력","2026-10-25","2차 소송통고","222222000",0,"10월 조치: 소송통고 2차 / 납부 3개월분"],["4200····577","전세(인천연수구)","계약",45,10654063,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-14","2차 소송통고","222222220",0,""],["4200····847","전세(고양)","계약",48,9206432,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-30","2차 소송통고","222222220",0,""],["4200····825","전세(인천부평구)","해약",28,8286596,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-06","2차 소송통고","222222220",0,""],["4200····803","전세(인천남동구)","계약",29,7254852,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-09","2차 소송통고","222222222",0,"납부 1개월분"],["4200····933","전세(하남)","계약",44,6021813,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-16","2차 소송통고","222222222",0,""],["4200····800","전세(용인)","계약",33,5293366,"강제집행 대상자",3,"없음(필요조치 완료)","2026-10-05","2차 소송통고","222222222",0,"10월 조치: 강제집행 검토"],["4200····778","전세(인천계양구)","해약",21,4455262,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-01","2차 소송통고","222222220",0,""],["4200····816","전세(고양)","계약",38,3012834,"강제집행 대상자",3,"없음(필요조치 완료)","2026-10-19","2차 소송통고","222222222",0,"10월 조치: 강제집행 검토 / 납부 2개월분"],["4200····640","전세(수원권선)","계약",23,2606151,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-24","2차 소송통고","222222220",0,"납부 1개월분"],["4200····668","전세(인천부평구)","계약",47,12857440,"제소대상자",0,"소송통고 2차","2026-08-11","제소의뢰","222222000",0,"누락 신규"],["4200····542","전세(시흥)","계약",42,12821464,"분과심의 대상자",0,"1차 납부최고","2025-04-06","제소의뢰","110002000",0,""],["4200····933","전세(인천미추홀구)","계약",40,12107110,"제소대상자",0,"소송통고 2차","2026-06-24","제소의뢰","222222022",0,""],["4200····274","전세(시흥)","계약",37,9948587,"제소대상자",0,"소송통고 2차","2026-07-22","제소의뢰","222222000",0,""],["4200····754","전세(인천중구)","계약",47,9569663,"분과심의 대상자",0,"1차 납부최고","2025-08-21","제소의뢰","110002000",0,""],["4200····083","전세(고양)","계약",45,9282573,"분과심의 대상자",0,"1차 납부최고","2025-03-01","제소의뢰","110002000",0,"납부 1개월분"],["4200····129","전세(부천)","계약",26,6981194,"분과심의 대상자",0,"1차 납부최고","2025-05-11","제소의뢰","110002000",0,"납부 1개월분"],["4200····520","전세(수원장안)","계약",29,6702250,"제소대상자",0,"소송통고 2차","2026-07-27","제소의뢰","222222000",0,""],["4200····098","전세(수원권선)","계약",36,5589629,"분과심의 대상자",0,"1차 납부최고","2025-09-19","제소의뢰","110002000",0,"납부 1개월분"],["4200····721","전세(인천남동구)","계약",17,4620901,"제소대상자",0,"소송통고 2차","2026-08-06","제소의뢰","222222000",0,"누락 신규 / 납부 3개월분"],["4200····762","전세(고양)","계약",15,3937358,"제소대상자",0,"소송통고 2차","2026-08-18","제소의뢰","222222000",0,"누락 신규 / 납부 1개월분"],["4200····705","전세(인천남동구)","계약",23,3725988,"제소대상자",0,"소송통고 2차","2026-08-11","제소의뢰","222222020",0,"누락 신규"],["4200····724","전세(안산)","해약",49,3317203,"특수채권",0,"제소","2025-12-22","제소의뢰","110002000",0,""],["4200····772","전세(용인)","해약",46,16083859,"특수채권",1,"소송정보입력","2026-10-22","제소의뢰","221202020",0,"10월 조치: 제소"],["4200····890","전세(인천서구)","해약",32,12477982,"특수채권",1,"소송정보입력","2026-08-19","제소의뢰","222222000",0,""],["4200····600","전세(인천남동구)","계약",45,12241650,"제소대상자",1,"소송통고 2차","2026-10-28","제소의뢰","222222000",0,"10월 조치: 제소"],["4200····908","전세(인천계양구)","해약",39,10661480,"특수채권",1,"소송정보입력","2026-10-02","제소의뢰","222202020",0,"10월 조치: 제소"],["4200····700","전세(인천남동구)","해약",34,9406780,"특수채권",1,"소송정보입력","2026-10-11","제소의뢰","210000000",0,"10월 조치: 제소 / 누락 해소"],["4200····194","전세(인천중구)","해약",48,9338272,"특수채권",1,"소송정보입력","2026-10-02","제소의뢰","210000000",0,"10월 조치: 제소 / 누락 해소"],["4200····437","전세(인천계양구)","계약",42,8921269,"제소대상자",1,"소송통고 2차","2026-10-19","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····914","전세(수원장안)","해약",36,8793080,"특수채권",1,"소송정보입력","2026-10-19","제소의뢰","222220000",0,"10월 조치: 제소 / 누락 해소"],["4200····620","전세(인천연수구)","계약",29,8251918,"제소대상자",1,"소송통고 2차","2026-10-12","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····568","전세(안산)","해약",38,7951504,"특수채권",1,"소송정보입력","2026-10-16","제소의뢰","210002020",0,"10월 조치: 제소 / 누락 해소"],["4200····559","전세(인천중구)","계약",27,7489942,"제소대상자",1,"소송통고 2차","2026-10-19","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····568","전세(인천계양구)","계약",23,7397036,"제소대상자",1,"소송통고 2차","2026-10-09","제소의뢰","222222020",0,"10월 조치: 제소 / 납부 2개월분"],["4200····088","전세(수원영통)","계약",25,6807131,"제소대상자",1,"소송통고 2차","2026-10-07","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····839","전세(화성)","계약",42,6660029,"제소대상자",1,"소송통고 2차","2026-10-27","제소의뢰","222220000",0,"10월 조치: 제소 / 누락 해소"],["4200····470","전세(수원영통)","해약",23,6633885,"특수채권",1,"소송정보입력","2026-10-06","제소의뢰","221202000",0,"10월 조치: 제소"],["4200····133","전세(인천서구)","해약",26,6318271,"특수채권",1,"소송정보입력","2026-10-14","제소의뢰","221200000",0,"10월 조치: 제소 / 납부 1개월분"],["4200····067","전세(인천중구)","계약",29,5902969,"제소대상자",1,"소송통고 2차","2026-10-23","제소의뢰","222222022",0,"10월 조치: 제소"],["4200····556","전세(인천남동구)","해약",27,5805981,"특수채권",1,"소송정보입력","2026-10-14","제소의뢰","110002000",0,"10월 조치: 제소 / 누락 해소"],["4200····118","전세(하남)","계약",44,5787328,"제소대상자",1,"소송통고 2차","2026-10-16","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····194","전세(인천계양구)","해약",47,5522337,"특수채권",1,"소송정보입력","2026-09-24","제소의뢰","222222022",0,""],["4200····255","전세(하남)","해약",33,5373912,"특수채권",1,"소송정보입력","2026-10-10","제소의뢰","210000000",0,"10월 조치: 제소 / 누락 해소"],["4200····016","전세(인천계양구)","해약",38,5087290,"특수채권",1,"소송정보입력","2026-10-30","제소의뢰","222220000",0,"10월 조치: 제소 / 누락 해소"],["4200····691","전세(인천동구)","해약",36,4518546,"특수채권",1,"소송정보입력","2026-10-26","제소의뢰","221202022",0,"10월 조치: 제소"],["4200····475","전세(부천)","해약",29,4451234,"특수채권",1,"소송정보입력","2026-10-07","제소의뢰","221200000",0,"10월 조치: 제소 / 누락 해소"],["4200····761","전세(인천계양구)","해약",27,4357610,"특수채권",1,"소송정보입력","2026-10-26","제소의뢰","110000000",0,"10월 조치: 제소"],["4200····213","전세(인천동구)","계약",31,4291542,"제소대상자",1,"소송통고 2차","2026-10-08","제소의뢰","222222000",0,"10월 조치: 제소"],["4200····105","전세(수원팔달)","계약",19,4255115,"제소대상자",1,"소송통고 2차","2026-10-27","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····261","전세(광명)","계약",16,4123516,"제소대상자",1,"소송통고 2차","2026-10-16","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····229","전세(인천연수구)","해약",35,3887633,"특수채권",1,"소송정보입력","2026-09-28","제소의뢰","222222200",0,""],["4200····038","전세(화성)","해약",43,3768124,"특수채권",1,"소송정보입력","2026-07-24","제소의뢰","222222000",0,""],["4200····229","전세(인천동구)","계약",38,3742164,"제소대상자",1,"소송통고 2차","2026-10-17","제소의뢰","222220000",0,"10월 조치: 제소 / 누락 해소"],["4200····299","전세(인천연수구)","계약",26,3666002,"제소대상자",1,"소송통고 2차","2026-10-30","제소의뢰","222222020",0,"10월 조치: 제소"],["4200····061","전세(인천계양구)","계약",47,3628401,"제소대상자",1,"소송통고 2차","2026-10-29","제소의뢰","222222000",0,"10월 조치: 제소 / 납부 1개월분"],["4200····695","전세(하남)","계약",15,3180678,"제소대상자",1,"소송통고 2차","2026-10-19","제소의뢰","222222000",0,"10월 조치: 제소"],["4200····073","전세(인천계양구)","해약",33,3171638,"특수채권",1,"소송정보입력","2026-08-02","제소의뢰","222222022",0,""],["4200····648","전세(수원팔달)","계약",32,3153267,"제소대상자",1,"소송통고 2차","2026-10-14","제소의뢰","222220000",0,"10월 조치: 제소"],["4200····792","전세(인천부평구)","계약",18,3099054,"제소대상자",1,"소송통고 2차","2026-10-25","제소의뢰","222222000",0,"10월 조치: 제소"],["4200····045","전세(인천남동구)","해약",11,2937175,"특수채권",1,"소송정보입력","2026-09-30","제소의뢰","222222000",0,"납부 2개월분"],["4200····547","전세(안산)","계약",14,2920628,"제소대상자",1,"소송정보입력","2026-09-09","제소의뢰","222222200",0,"납부 1개월분"],["4200····312","전세(인천중구)","계약",19,2886340,"제소대상자",1,"소송통고 2차","2026-10-21","제소의뢰","222220000",0,"10월 조치: 제소 / 누락 해소"],["4200····372","전세(인천계양구)","해약",19,2814037,"특수채권",1,"소송정보입력","2026-07-25","제소의뢰","222222022",0,"납부 2개월분"],["4200····762","전세(부천)","계약",24,2211601,"제소대상자",1,"소송정보입력","2026-09-30","제소의뢰","222222200",0,""],["4200····459","전세(부천)","해약",32,1802052,"특수채권",1,"소송정보입력","2026-10-13","제소의뢰","221202020",0,"10월 조치: 제소"],["4200····238","전세(고양)","해약",4,360118,"특수채권",1,"소송정보입력","2026-10-06","제소의뢰","110000000",0,"10월 조치: 제소 / 누락 해소"],["4200····329","전세(인천부평구)","해약",4,194409,"특수채권",1,"소송정보입력","2026-10-14","제소의뢰","221200000",0,"10월 조치: 제소 / 누락 해소"],["4200····533","전세(시흥)","계약",46,14173963,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-28","제소의뢰","222222222",0,""],["4200····568","전세(수원권선)","계약",35,9715928,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-09","제소의뢰","222222222",0,""],["4200····649","전세(화성)","계약",45,8546586,"강제집행 대상자",3,"없음(필요조치 완료)","2026-10-29","제소의뢰","222222222",0,"10월 조치: 강제집행 검토 / 납부 2개월분"],["4200····267","전세(광명)","계약",19,5340950,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-19","제소의뢰","222222222",0,""],["4200····960","전세(인천계양구)","해약",19,5111556,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-06","제소의뢰","222222222",0,""],["4200····199","전세(광명)","해약",34,4796561,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-14","제소의뢰","222222222",0,""],["4200····106","전세(인천동구)","계약",21,4691502,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-12","제소의뢰","222222220",0,"납부 1개월분"],["4200····491","전세(인천서구)","해약",20,2670067,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2025-12-06","제소의뢰","222222220",0,"납부 1개월분"],["4200····226","전세(시흥)","계약",14,2280943,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-27","제소의뢰","222222220",0,""],["4200····463","전세(인천동구)","계약",44,13347814,"제소대상자",0,"소송통고 2차","2026-06-08","분과심의 확정","222222000",0,""],["4200····695","전세(인천서구)","계약",41,13202239,"제소대상자",0,"소송통고 2차","2026-06-08","분과심의 확정","222222000",0,""],["4200····967","전세(광명)","계약",43,10523312,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222200000",0,"누락 신규 / 재검토 분류 변경: 생활안정지원대상자 → 제소대상자"],["4200····739","전세(수원장안)","계약",24,8346930,"제소대상자",0,"소송통고 2차","2026-06-08","분과심의 확정","222222000",0,"납부 2개월분"],["4200····233","전세(부천)","계약",35,7861430,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222220000",0,""],["4200····454","전세(인천계양구)","계약",26,7139924,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222220000",0,""],["4200····745","전세(용인)","계약",17,7072321,"제소대상자",0,"소송통고 2차","2026-06-08","분과심의 확정","222222020",0,""],["4200····139","전세(부천)","계약",48,5704432,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222220000",0,""],["4200····853","전세(수원권선)","계약",44,5100350,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222202000",0,"누락 신규 / 재검토 분류 변경: 생활안정지원대상자 → 제소대상자"],["4200····349","전세(인천동구)","계약",25,4960018,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222220000",0,"납부 2개월분"],["4200····027","전세(고양)","계약",45,4762889,"제소대상자",0,"소송통고 2차","2026-06-08","분과심의 확정","222222000",0,""],["4200····482","전세(수원팔달)","계약",40,4417470,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222222020",0,""],["4200····632","전세(화성)","계약",14,4270785,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222222000",0,""],["4200····096","전세(수원영통)","계약",24,3871073,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222220000",0,""],["4200····047","전세(부천)","계약",34,3717170,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222200000",0,"누락 신규 / 재검토 분류 변경: 소송유예자 → 제소대상자 / 납부 3개월분"],["4200····730","전세(인천부평구)","계약",21,3550588,"강제집행 대상자",0,"강제집행 검토","2026-06-08","분과심의 확정","222222222",0,""],["4200····520","전세(고양)","계약",18,3424645,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222222022",0,""],["4200····907","전세(인천중구)","계약",23,1892628,"제소대상자",0,"소송통고 2차","2026-06-08","분과심의 확정","222222000",0,""],["4200····369","전세(인천미추홀구)","계약",35,1798198,"제소대상자",0,"제소","2026-06-08","분과심의 확정","222220000",0,""],["4200····319","전세(용인)","계약",30,8018903,"제소대상자",1,"소송정보입력","2026-06-08","분과심의 확정","222222200",0,"납부 3개월분"],["4200····752","전세(인천계양구)","계약",42,7337199,"제소대상자",1,"제소","2026-10-20","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 누락 해소 / 분과심의 결과: 제소대상자"],["4200····314","전세(부천)","계약",36,6817663,"제소대상자",1,"소송정보입력","2026-06-08","분과심의 확정","222222220",0,""],["4200····611","전세(용인)","계약",33,6460693,"제소대상자",1,"제소","2026-10-07","분과심의 확정","221202022",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 제소대상자"],["4200····843","전세(수원장안)","계약",30,6385411,"제소대상자",1,"제소","2026-10-30","분과심의 확정","221202020",0,"10월 조치: 분과심의 상정 / 누락 해소 / 분과심의 결과: 제소대상자"],["4200····265","전세(화성)","계약",37,5903089,"제소대상자",1,"제소","2026-10-29","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 제소대상자"],["4200····655","전세(수원팔달)","계약",25,5774333,"제소대상자",1,"제소","2026-10-31","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 제소대상자"],["4200····373","전세(인천연수구)","계약",32,5385118,"제소대상자",1,"소송정보입력","2026-06-08","분과심의 확정","222222220",0,""],["4200····779","전세(인천계양구)","계약",25,4417025,"제소대상자",1,"제소","2026-10-22","분과심의 확정","221202022",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 제소대상자"],["4200····731","전세(화성)","계약",32,4090546,"제소대상자",1,"제소","2026-10-10","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 제소대상자"],["4200····637","전세(고양)","계약",16,2860864,"제소대상자",1,"제소","2026-10-11","분과심의 확정","221202000",0,"10월 조치: 분과심의 상정 / 누락 해소 / 분과심의 결과: 제소대상자"],["4200····433","전세(시흥)","계약",32,12417527,"소송유예자",2,"익월 재검토","2026-10-07","분과심의 확정","221202020",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 소송유예자 / 납부 2개월분"],["4200····999","전세(인천동구)","계약",34,8159697,"소송유예자",2,"익월 재검토","2026-06-08","분과심의 확정","222202000",0,"납부 1개월분"],["4200····455","전세(인천부평구)","계약",39,6718836,"생활안정지원대상자",2,"익월 재검토","2026-10-02","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 생활안정지원대상자"],["4200····324","전세(부천)","계약",25,6224390,"생활안정지원대상자",2,"익월 재검토","2026-10-28","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 생활안정지원대상자 / 납부 3개월분"],["4200····547","전세(안산)","계약",29,4743557,"소송유예자",2,"익월 재검토","2026-10-21","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 소송유예자 / 납부 3개월분"],["4200····409","전세(인천계양구)","계약",27,2429009,"생활안정지원대상자",2,"익월 재검토","2026-10-31","분과심의 확정","221200000",0,"10월 조치: 분과심의 상정 / 분과심의 결과: 생활안정지원대상자"],["4200····073","전세(인천계양구)","계약",33,11311919,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,""],["4200····492","전세(인천미추홀구)","계약",46,10607909,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222222",0,"납부 1개월분"],["4200····875","전세(안산)","계약",49,9268972,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,""],["4200····834","전세(광명)","계약",47,9216471,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,""],["4200····793","전세(안산)","계약",35,8885904,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,"납부 1개월분"],["4200····595","전세(고양)","계약",34,8351407,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,""],["4200····568","전세(수원팔달)","계약",38,8108545,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,"납부 3개월분"],["4200····014","전세(시흥)","계약",40,6895955,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222222",0,""],["4200····205","전세(화성)","계약",29,6744927,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222222",0,"납부 3개월분"],["4200····107","전세(수원팔달)","계약",13,2885804,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,""],["4200····914","전세(인천서구)","계약",15,2601860,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-08","분과심의 확정","222222220",0,""],["4200····417","전세(안산)","해약",45,12709342,"특수채권",0,"제소","2026-06-02","가옥명도최고","221200000",0,""],["4200····806","전세(인천중구)","계약",46,12370011,"분과심의 대상자",0,"분과심의 상정","2026-06-27","가옥명도최고","221200000",0,""],["4200····466","전세(인천중구)","해약",43,10852442,"특수채권",0,"제소","2026-06-29","가옥명도최고","222220000",0,""],["4200····225","전세(인천미추홀구)","해약",38,10282547,"특수채권",0,"제소","2026-04-30","가옥명도최고","222222000",0,"납부 3개월분"],["4200····576","전세(안산)","해약",31,9864150,"특수채권",0,"제소","2026-07-09","가옥명도최고","222220000",0,"납부 1개월분"],["4200····618","전세(인천중구)","해약",47,9149707,"특수채권",0,"제소","2026-05-19","가옥명도최고","221200000",0,""],["4200····384","전세(수원영통)","계약",46,7467990,"분과심의 대상자",0,"분과심의 상정","2026-08-11","가옥명도최고","221202022",0,"누락 신규"],["4200····020","전세(인천남동구)","해약",27,7144705,"특수채권",0,"제소","2026-06-21","가옥명도최고","222202020",0,""],["4200····535","전세(인천동구)","계약",40,6880685,"제소대상자",0,"제소","2026-07-29","가옥명도최고","222222022",0,"납부 3개월분"],["4200····357","전세(인천동구)","계약",21,6718259,"분과심의 대상자",0,"분과심의 상정","2026-04-27","가옥명도최고","221202020",0,""],["4200····515","전세(안산)","계약",32,6062825,"제소대상자",0,"제소","2026-06-14","가옥명도최고","222220000",0,"납부 2개월분"],["4200····318","전세(인천남동구)","해약",22,5345723,"특수채권",0,"제소","2026-07-31","가옥명도최고","222220000",0,""],["4200····289","전세(화성)","계약",18,4292024,"제소대상자",0,"제소","2026-08-17","가옥명도최고","222202020",0,"누락 신규 / 재검토 분류 변경: 소송유예자 → 제소대상자"],["4200····539","전세(수원장안)","해약",22,3923745,"특수채권",0,"제소","2026-08-30","가옥명도최고","222220000",0,"누락 신규"],["4200····419","전세(부천)","해약",12,3771962,"특수채권",0,"제소","2026-06-21","가옥명도최고","222200000",0,""],["4200····412","전세(시흥)","계약",16,3687846,"분과심의 대상자",0,"분과심의 상정","2026-06-04","가옥명도최고","221202020",0,""],["4200····976","전세(인천부평구)","해약",12,3189691,"특수채권",0,"제소","2026-07-08","가옥명도최고","222000000",0,""],["4200····466","전세(인천계양구)","해약",17,2651762,"특수채권",0,"제소","2026-05-27","가옥명도최고","222202000",0,""],["4200····534","전세(인천동구)","계약",34,2557062,"분과심의 대상자",0,"분과심의 상정","2026-08-10","가옥명도최고","222202000",0,"누락 신규 / 분류 변경: 장기체납자 → 분과심의 대상자"],["4200····136","전세(하남)","계약",27,2360412,"제소대상자",0,"제소","2026-07-17","가옥명도최고","222222022",0,""],["4200····543","전세(수원팔달)","해약",9,2102535,"특수채권",0,"제소","2026-07-04","가옥명도최고","222000000",0,""],["4200····815","전세(인천부평구)","계약",18,1744638,"장기체납자",0,"분과심의 상정 여부 검토","2026-06-04","가옥명도최고","222202000",0,""],["4200····398","전세(인천동구)","계약",21,1744048,"장기체납자",0,"분과심의 상정 여부 검토","2026-06-23","가옥명도최고","222200000",0,""],["4200····358","전세(안산)","계약",19,1657302,"장기체납자",0,"분과심의 상정 여부 검토","2026-07-23","가옥명도최고","222200000",0,"납부 2개월분"],["4200····902","전세(인천계양구)","해약",16,1633955,"특수채권",0,"제소","2026-07-10","가옥명도최고","222222022",0,""],["4200····969","전세(부천)","계약",21,1581727,"장기체납자",0,"분과심의 상정 여부 검토","2026-06-16","가옥명도최고","222200000",0,""],["4200····398","전세(화성)","계약",18,1534991,"장기체납자",0,"분과심의 상정 여부 검토","2026-08-18","가옥명도최고","222202000",0,"누락 신규"],["4200····015","전세(고양)","계약",13,1509825,"장기체납자",0,"분과심의 상정 여부 검토","2026-06-25","가옥명도최고","222200000",0,""],["4200····157","전세(부천)","계약",31,1478367,"장기체납자",0,"분과심의 상정 여부 검토","2026-06-09","가옥명도최고","222200000",0,""],["4200····185","전세(인천연수구)","계약",10,1467936,"장기체납자",0,"분과심의 상정 여부 검토","2026-05-16","가옥명도최고","222200000",0,"납부 3개월분"],["4200····531","전세(용인)","계약",12,1389374,"장기체납자",0,"분과심의 상정 여부 검토","2026-06-28","가옥명도최고","222200000",0,"누락 신규 / 분류 변경: 중기체납자 → 장기체납자"],["4200····923","전세(인천연수구)","해약",5,1345740,"특수채권",0,"제소","2026-06-27","가옥명도최고","222000000",0,""],["4200····953","전세(수원팔달)","계약",6,1310972,"중기체납자",0,"2차 납부최고","2026-07-02","가옥명도최고","222000000",0,"누락 신규 / 분류 변경: 단기체납자 → 중기체납자"],["4200····764","전세(고양)","해약",12,1245316,"특수채권",0,"제소","2026-06-22","가옥명도최고","222220000",0,"납부 2개월분"],["4200····937","전세(수원장안)","해약",22,1104883,"특수채권",0,"제소","2026-05-08","가옥명도최고","221200000",0,""],["4200····316","전세(고양)","계약",6,538752,"중기체납자",0,"2차 납부최고","2026-05-23","가옥명도최고","222000000",0,"누락 신규 / 분류 변경: 단기체납자 → 중기체납자"],["4200····373","전세(고양)","해약",4,339596,"특수채권",0,"제소","2026-07-04","가옥명도최고","222200000",0,""],["4200····304","전세(시흥)","계약",48,12047250,"제소대상자",1,"소송통고 2차","2026-09-06","가옥명도최고","222222000",0,"납부 1개월분"],["4200····734","전세(화성)","계약",34,9102901,"제소대상자",1,"제소","2026-09-27","가옥명도최고","222202022",0,"재검토 분류 변경: 소송유예자 → 제소대상자"],["4200····688","전세(용인)","해약",31,8635630,"특수채권",1,"제소","2026-09-06","가옥명도최고","221200000",0,""],["4200····752","전세(부천)","계약",35,8200663,"강제집행 대상자",1,"강제집행 검토","2026-09-27","가옥명도최고","222222222",0,""],["4200····705","전세(시흥)","해약",46,6600907,"특수채권",1,"소송정보입력","2026-09-06","가옥명도최고","222222200",0,""],["4200····841","전세(부천)","계약",29,5823923,"제소대상자",1,"제소","2026-09-01","가옥명도최고","222222022",0,""],["4200····954","전세(수원권선)","계약",31,5681593,"제소대상자",1,"제소","2026-09-10","가옥명도최고","222220000",0,"납부 1개월분"],["4200····554","전세(광명)","계약",38,5122766,"제소대상자",1,"소송정보입력","2026-09-22","가옥명도최고","222222200",0,"납부 1개월분"],["4200····740","전세(수원장안)","계약",34,4016134,"제소대상자",1,"제소","2026-09-30","가옥명도최고","222222020",0,""],["4200····878","전세(광명)","계약",18,3528534,"제소대상자",1,"소송통고 2차","2026-09-04","가옥명도최고","222222022",0,""],["4200····509","전세(인천미추홀구)","계약",26,2653508,"제소대상자",1,"소송정보입력","2026-09-06","가옥명도최고","222222200",0,"납부 3개월분"],["4200····281","전세(부천)","계약",34,2400532,"분과심의 대상자",1,"분과심의 상정","2026-09-09","가옥명도최고","221202022",0,""],["4200····286","전세(고양)","계약",23,2096659,"분과심의 대상자",1,"분과심의 상정","2026-10-30","가옥명도최고","222200000",0,"10월 조치: 분과심의 상정 여부 검토 / 검토 결과 분과심의 상정 대상"],["4200····673","전세(용인)","계약",19,1699350,"제소대상자",1,"소송정보입력","2026-09-20","가옥명도최고","222222200",0,""],["4200····264","전세(인천동구)","계약",17,1650754,"제소대상자",1,"제소","2026-09-11","가옥명도최고","222222020",0,""],["4200····631","전세(용인)","해약",18,1463759,"특수채권",1,"소송정보입력","2026-07-20","가옥명도최고","222222200",0,"납부 1개월분"],["4200····997","전세(인천부평구)","계약",16,937591,"장기체납자",1,"분과심의 상정 여부 검토","2026-09-21","가옥명도최고","222200000",0,"납부 3개월분"],["4200····597","전세(인천연수구)","계약",42,11137456,"생활안정지원대상자",2,"익월 재검토","2026-08-26","가옥명도최고","222202000",0,""],["4200····512","전세(수원권선)","계약",45,9452188,"생활안정지원대상자",2,"익월 재검토","2026-08-21","가옥명도최고","222200000",0,"납부 3개월분"],["4200····990","전세(인천부평구)","계약",28,7976528,"생활안정지원대상자",2,"익월 재검토","2026-08-12","가옥명도최고","222202022",0,"납부 1개월분"],["4200····390","전세(인천중구)","계약",23,5776895,"소송유예자",2,"익월 재검토","2026-08-09","가옥명도최고","222200000",0,""],["4200····225","전세(수원팔달)","계약",25,5764273,"소송유예자",2,"익월 재검토","2026-07-24","가옥명도최고","222200000",0,""],["4200····903","전세(하남)","계약",46,5748747,"소송유예자",2,"익월 재검토","2026-06-18","가옥명도최고","222200000",0,""],["4200····021","전세(인천계양구)","계약",25,5050890,"소송유예자",2,"익월 재검토","2026-06-20","가옥명도최고","222202022",0,""],["4200····154","전세(시흥)","계약",47,3113169,"소송유예자",2,"익월 재검토","2026-09-11","가옥명도최고","222200000",0,""],["4200····076","전세(고양)","계약",44,2427813,"소송유예자",2,"익월 재검토","2026-09-12","가옥명도최고","222222220",0,""],["4200····844","전세(수원권선)","해약",46,17355046,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-20","가옥명도최고","222222220",0,""],["4200····050","전세(인천서구)","계약",44,14557012,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-14","가옥명도최고","222222222",0,""],["4200····831","전세(화성)","계약",37,12745732,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-26","가옥명도최고","222222220",0,""],["4200····131","전세(부천)","계약",32,10984306,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-22","가옥명도최고","222222220",0,""],["4200····647","전세(용인)","계약",44,9206838,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-04","가옥명도최고","222222220",0,""],["4200····637","전세(고양)","계약",35,8874431,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-04","가옥명도최고","222222220",0,""],["4200····379","전세(부천)","계약",26,7536880,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-06","가옥명도최고","222222222",0,"납부 3개월분"],["4200····013","전세(시흥)","해약",32,7418262,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-25","가옥명도최고","222222222",0,""],["4200····081","전세(인천동구)","계약",42,5747442,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-07-28","가옥명도최고","222222220",0,"납부 1개월분"],["4200····398","전세(광명)","계약",37,4665077,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-03","가옥명도최고","222222222",0,""],["4200····679","전세(부천)","계약",17,4594189,"강제집행 대상자",3,"없음(필요조치 완료)","2026-10-11","가옥명도최고","222222222",0,"10월 조치: 강제집행 검토"],["4200····028","전세(하남)","계약",19,4492620,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-23","가옥명도최고","222222222",0,"납부 2개월분"],["4200····698","전세(인천계양구)","계약",35,4128285,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-17","가옥명도최고","222222220",0,""],["4200····662","전세(수원장안)","계약",21,3952995,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-13","가옥명도최고","222222220",0,""],["4200····983","전세(수원영통)","계약",39,3808428,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-04","가옥명도최고","222222220",0,"납부 3개월분"],["4200····495","전세(부천)","계약",28,3646340,"강제집행 대상자",3,"없음(필요조치 완료)","2026-10-31","가옥명도최고","222222222",0,"10월 조치: 강제집행 검토"],["4200····924","전세(인천부평구)","계약",10,2920634,"중기체납자",3,"없음(필요조치 완료)","2026-09-01","가옥명도최고","222200000",0,""],["4200····477","전세(인천미추홀구)","계약",9,2464568,"중기체납자",3,"없음(필요조치 완료)","2026-07-09","가옥명도최고","222000000",0,"납부 1개월분"],["4200····339","전세(수원권선)","계약",9,2327571,"중기체납자",3,"없음(필요조치 완료)","2026-05-18","가옥명도최고","222200000",0,""],["4200····781","전세(하남)","해약",37,2139982,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-22","가옥명도최고","222222220",0,""],["4200····272","전세(인천부평구)","계약",8,1998596,"중기체납자",3,"없음(필요조치 완료)","2026-05-19","가옥명도최고","222000000",0,""],["4200····582","전세(인천미추홀구)","계약",11,1905469,"중기체납자",3,"없음(필요조치 완료)","2026-05-11","가옥명도최고","221200000",0,"납부 1개월분"],["4200····903","전세(안산)","계약",5,1879444,"단기체납자",3,"없음(필요조치 완료)","2026-05-07","가옥명도최고","222200000",0,""],["4200····391","전세(화성)","계약",5,1847903,"단기체납자",3,"없음(필요조치 완료)","2026-08-31","가옥명도최고","222000000",0,""],["4200····778","전세(인천서구)","계약",9,1627959,"중기체납자",3,"없음(필요조치 완료)","2026-05-18","가옥명도최고","222200000",0,"납부 1개월분"],["4200····460","전세(안산)","계약",7,1567459,"중기체납자",3,"없음(필요조치 완료)","2026-06-26","가옥명도최고","222200000",0,""],["4200····935","전세(인천연수구)","해약",15,1452073,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-08","가옥명도최고","222222222",0,""],["4200····083","전세(하남)","계약",9,1386036,"중기체납자",3,"없음(필요조치 완료)","2026-06-11","가옥명도최고","222200000",0,""],["4200····617","전세(인천중구)","해약",20,1320818,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-28","가옥명도최고","222222220",0,""],["4200····678","전세(수원영통)","해약",7,1283862,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-08","가옥명도최고","222222222",0,"납부 3개월분"],["4200····559","전세(인천남동구)","계약",16,1084935,"장기체납자",3,"없음(필요조치 완료)","2026-10-19","가옥명도최고","222200000",0,"10월 조치: 분과심의 상정 여부 검토"],["4200····739","전세(인천남동구)","계약",4,1047804,"단기체납자",3,"없음(필요조치 완료)","2026-06-26","가옥명도최고","222200000",0,""],["4200····219","전세(수원팔달)","계약",15,851378,"장기체납자",3,"없음(필요조치 완료)","2026-10-15","가옥명도최고","222200000",0,"10월 조치: 분과심의 상정 여부 검토"],["4200····545","전세(인천미추홀구)","계약",7,849442,"중기체납자",3,"없음(필요조치 완료)","2026-06-07","가옥명도최고","221200000",0,"납부 3개월분"],["4200····390","전세(안산)","계약",4,772003,"단기체납자",3,"없음(필요조치 완료)","2026-07-07","가옥명도최고","222200000",0,""],["4200····063","전세(인천동구)","계약",5,700111,"단기체납자",3,"없음(필요조치 완료)","2026-07-31","가옥명도최고","222200000",0,"납부 1개월분"],["4200····886","전세(인천연수구)","계약",8,600033,"중기체납자",3,"없음(필요조치 완료)","2026-04-25","가옥명도최고","222200000",0,"납부 3개월분"],["4200····465","전세(인천남동구)","계약",8,583338,"중기체납자",3,"없음(필요조치 완료)","2026-06-09","가옥명도최고","222200000",0,""],["4200····443","전세(인천중구)","계약",5,562228,"단기체납자",3,"없음(필요조치 완료)","2026-08-17","가옥명도최고","222000000",0,""],["4200····703","전세(인천서구)","계약",4,403378,"단기체납자",3,"없음(필요조치 완료)","2026-07-29","가옥명도최고","222200000",0,""],["4200····269","전세(시흥)","계약",4,332795,"단기체납자",3,"없음(필요조치 완료)","2026-08-19","가옥명도최고","222200000",0,""],["4200····788","전세(수원영통)","계약",5,324148,"단기체납자",3,"없음(필요조치 완료)","2026-09-17","가옥명도최고","222200000",0,""],["4200····947","전세(인천미추홀구)","계약",4,264084,"단기체납자",3,"없음(필요조치 완료)","2026-06-30","가옥명도최고","222200000",0,"납부 2개월분"],["4200····863","전세(인천중구)","계약",47,17984042,"제소대상자",1,"소송정보입력","2026-09-30","2차 납부최고","222222200",0,""],["4200····928","전세(수원영통)","해약",48,12705130,"특수채권",1,"제소","2026-09-26","2차 납부최고","221202022",0,""],["4200····590","전세(수원영통)","계약",35,10706799,"분과심의 대상자",1,"분과심의 상정","2026-10-22","2차 납부최고","210002022",0,"10월 조치: 2차 납부최고"],["4200····495","전세(수원팔달)","해약",39,10585313,"특수채권",1,"소송정보입력","2026-09-18","2차 납부최고","222222200",0,""],["4200····240","전세(부천)","계약",27,9594959,"분과심의 대상자",1,"분과심의 상정","2026-10-12","2차 납부최고","210002022",0,"10월 조치: 2차 납부최고 / 누락 해소 / 납부 1개월분"],["4200····174","전세(시흥)","계약",31,8468873,"분과심의 대상자",1,"분과심의 상정","2026-10-27","2차 납부최고","210002000",0,"10월 조치: 2차 납부최고"],["4200····983","전세(인천서구)","계약",28,7731990,"분과심의 대상자",1,"분과심의 상정","2026-10-14","2차 납부최고","210002022",0,"10월 조치: 2차 납부최고"],["4200····820","전세(하남)","계약",34,7467114,"분과심의 대상자",1,"분과심의 상정","2026-09-30","2차 납부최고","221202022",0,"납부 1개월분"],["4200····174","전세(인천부평구)","계약",39,7081734,"분과심의 대상자",1,"분과심의 상정","2026-10-18","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고 / 누락 해소 / 납부 3개월분"],["4200····025","전세(하남)","계약",41,6730895,"제소대상자",1,"제소","2026-09-30","2차 납부최고","222222000",0,"납부 1개월분"],["4200····595","전세(인천연수구)","계약",13,4262221,"분과심의 대상자",1,"분과심의 상정","2026-10-13","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고"],["4200····903","전세(수원장안)","계약",21,4086288,"강제집행 대상자",1,"강제집행 검토","2026-09-25","2차 납부최고","222222222",0,""],["4200····416","전세(수원장안)","계약",24,3933396,"제소대상자",1,"제소","2026-09-11","2차 납부최고","222220000",0,""],["4200····341","전세(부천)","해약",33,3859328,"특수채권",1,"제소","2026-09-05","2차 납부최고","222222022",0,""],["4200····737","전세(수원권선)","계약",16,3756536,"분과심의 대상자",1,"분과심의 상정","2026-10-13","2차 납부최고","210002022",0,"10월 조치: 2차 납부최고 / 누락 해소"],["4200····902","전세(고양)","계약",25,3730918,"분과심의 대상자",1,"분과심의 상정","2026-10-03","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고 / 납부 1개월분"],["4200····342","전세(수원장안)","계약",35,3446538,"제소대상자",1,"소송통고 2차","2026-09-10","2차 납부최고","222222022",0,""],["4200····054","전세(광명)","계약",45,3127307,"제소대상자",1,"제소","2026-09-27","2차 납부최고","222200000",0,"재검토 분류 변경: 소송유예자 → 제소대상자"],["4200····094","전세(부천)","계약",24,3001413,"분과심의 대상자",1,"분과심의 상정","2026-10-14","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고"],["4200····499","전세(수원권선)","계약",32,2862325,"분과심의 대상자",1,"분과심의 상정","2026-10-12","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고"],["4200····227","전세(인천부평구)","계약",31,2374818,"분과심의 대상자",1,"분과심의 상정","2026-10-28","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고 / 누락 해소"],["4200····416","전세(고양)","계약",14,2093385,"제소대상자",1,"소송통고 2차","2026-09-24","2차 납부최고","222222000",0,""],["4200····443","전세(인천동구)","계약",15,1825323,"장기체납자",1,"분과심의 상정 여부 검토","2026-10-23","2차 납부최고","210002020",0,"10월 조치: 2차 납부최고"],["4200····380","전세(수원영통)","계약",12,1416280,"장기체납자",1,"분과심의 상정 여부 검토","2026-10-08","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고 / 납부 2개월분"],["4200····621","전세(인천남동구)","계약",12,1387161,"분과심의 대상자",1,"분과심의 상정","2026-09-18","2차 납부최고","222200000",0,"분류 변경: 중기체납자 → 분과심의 대상자"],["4200····130","전세(수원장안)","계약",24,4891378,"소송유예자",2,"익월 재검토","2026-09-14","2차 납부최고","222220000",0,""],["4200····601","전세(인천동구)","계약",45,12948895,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-20","2차 납부최고","222222222",0,""],["4200····986","전세(인천중구)","계약",41,11415698,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-25","2차 납부최고","222222220",0,"납부 1개월분"],["4200····457","전세(인천동구)","계약",28,9560879,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-17","2차 납부최고","222222220",0,""],["4200····416","전세(인천동구)","계약",48,6803916,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-14","2차 납부최고","222222220",0,""],["4200····600","전세(수원팔달)","계약",19,5568681,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-22","2차 납부최고","222222222",0,""],["4200····758","전세(안산)","계약",43,4227959,"강제집행 대상자",3,"없음(필요조치 완료)","2026-10-27","2차 납부최고","222222222",0,"10월 조치: 강제집행 검토"],["4200····402","전세(인천서구)","계약",5,1774000,"단기체납자",3,"없음(필요조치 완료)","2026-09-23","2차 납부최고","221000000",0,""],["4200····243","전세(인천부평구)","계약",5,1694718,"중기체납자",3,"없음(필요조치 완료)","2026-10-21","2차 납부최고","210000000",0,"10월 조치: 2차 납부최고 / 누락 해소 / 납부 2개월분"],["4200····128","전세(고양)","계약",4,1061099,"단기체납자",3,"없음(필요조치 완료)","2026-09-25","2차 납부최고","221000000",0,""],["4200····345","전세(인천서구)","계약",5,796053,"단기체납자",3,"없음(필요조치 완료)","2026-09-23","2차 납부최고","222200000",0,""],["4200····283","전세(광명)","계약",5,464673,"단기체납자",3,"없음(필요조치 완료)","2026-09-07","2차 납부최고","222000000",0,""],["4200····919","전세(화성)","계약",47,17478027,"분과심의 대상자",0,"2차 납부최고","2026-06-19","1차 납부최고","210002020",0,""],["4200····290","전세(인천부평구)","계약",44,15189055,"분과심의 대상자",0,"2차 납부최고","2026-07-13","1차 납부최고","210002000",0,""],["4200····831","전세(수원팔달)","해약",45,14631785,"특수채권",0,"제소","2026-06-22","1차 납부최고","210002000",0,""],["4200····819","전세(인천서구)","계약",34,10458449,"분과심의 대상자",0,"2차 납부최고","2026-08-16","1차 납부최고","210002000",0,"누락 신규"],["4200····221","전세(시흥)","계약",46,10179365,"분과심의 대상자",0,"2차 납부최고","2026-05-11","1차 납부최고","210002000",0,""],["4200····638","전세(인천연수구)","해약",48,9240776,"특수채권",0,"제소","2026-06-18","1차 납부최고","210002000",0,""],["4200····251","전세(인천계양구)","계약",20,7650778,"분과심의 대상자",0,"2차 납부최고","2026-07-25","1차 납부최고","210002020",0,""],["4200····935","전세(인천연수구)","계약",30,7544087,"분과심의 대상자",0,"2차 납부최고","2026-08-16","1차 납부최고","210000000",0,"누락 신규"],["4200····155","전세(인천남동구)","계약",29,7402968,"분과심의 대상자",0,"2차 납부최고","2026-05-26","1차 납부최고","210000000",0,"납부 1개월분"],["4200····051","전세(인천미추홀구)","계약",31,6291094,"분과심의 대상자",0,"2차 납부최고","2026-04-04","1차 납부최고","210002000",0,""],["4200····635","전세(인천부평구)","계약",47,5676459,"분과심의 대상자",0,"2차 납부최고","2026-06-16","1차 납부최고","210000000",0,""],["4200····374","전세(인천부평구)","계약",21,5673937,"분과심의 대상자",0,"2차 납부최고","2026-08-21","1차 납부최고","210002000",0,"누락 신규"],["4200····668","전세(인천계양구)","계약",32,5288772,"분과심의 대상자",0,"2차 납부최고","2026-07-29","1차 납부최고","210002000",0,""],["4200····962","전세(용인)","계약",41,4964037,"분과심의 대상자",0,"2차 납부최고","2026-04-17","1차 납부최고","210002022",0,""],["4200····838","전세(인천중구)","계약",48,4778803,"분과심의 대상자",0,"2차 납부최고","2026-05-15","1차 납부최고","210000000",0,""],["4200····315","전세(인천남동구)","계약",17,4573330,"분과심의 대상자",0,"2차 납부최고","2026-07-06","1차 납부최고","210000000",0,"납부 1개월분"],["4200····705","전세(수원팔달)","계약",15,4497521,"분과심의 대상자",0,"2차 납부최고","2026-07-10","1차 납부최고","210002000",0,""],["4200····651","전세(시흥)","계약",22,3990231,"분과심의 대상자",0,"2차 납부최고","2026-04-08","1차 납부최고","210000000",0,""],["4200····967","전세(수원영통)","계약",31,3489845,"분과심의 대상자",0,"2차 납부최고","2026-06-24","1차 납부최고","210000000",0,""],["4200····239","전세(인천연수구)","계약",16,3417211,"분과심의 대상자",0,"2차 납부최고","2026-05-15","1차 납부최고","210002000",0,""],["4200····530","전세(안산)","계약",40,3226758,"분과심의 대상자",0,"2차 납부최고","2026-05-04","1차 납부최고","210000000",0,"납부 1개월분"],["4200····148","전세(수원영통)","계약",38,2517368,"분과심의 대상자",0,"2차 납부최고","2026-07-23","1차 납부최고","210002022",0,""],["4200····879","전세(시흥)","계약",15,2501840,"분과심의 대상자",0,"2차 납부최고","2026-04-26","1차 납부최고","210002000",0,""],["4200····416","전세(수원팔달)","계약",26,2238464,"분과심의 대상자",0,"2차 납부최고","2026-03-19","1차 납부최고","210000000",0,""],["4200····419","전세(광명)","계약",13,2226453,"분과심의 대상자",0,"2차 납부최고","2026-05-14","1차 납부최고","210002000",0,""],["4200····930","전세(용인)","해약",9,2122440,"특수채권",0,"제소","2026-08-12","1차 납부최고","210000000",0,"누락 신규"],["4200····806","전세(안산)","해약",6,2068217,"특수채권",0,"제소","2026-03-15","1차 납부최고","210000000",0,""],["4200····216","전세(인천중구)","계약",34,1934176,"분과심의 대상자",0,"2차 납부최고","2026-08-15","1차 납부최고","210002020",0,"누락 신규 / 납부 1개월분"],["4200····345","전세(시흥)","계약",8,1931717,"중기체납자",0,"2차 납부최고","2026-06-28","1차 납부최고","210000000",0,"납부 2개월분"],["4200····103","전세(안산)","해약",7,1607208,"특수채권",0,"제소","2026-04-17","1차 납부최고","210000000",0,""],["4200····310","전세(하남)","계약",40,14437846,"분과심의 대상자",1,"2차 납부최고","2026-10-03","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 납부 3개월분"],["4200····479","전세(화성)","계약",40,13557559,"분과심의 대상자",1,"2차 납부최고","2026-10-25","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····870","전세(인천중구)","계약",41,13226212,"제소대상자",1,"제소","2026-09-24","1차 납부최고","222220000",0,"납부 2개월분"],["4200····969","전세(인천남동구)","계약",48,12125375,"분과심의 대상자",1,"분과심의 상정","2026-09-08","1차 납부최고","221200000",0,"납부 1개월분"],["4200····399","전세(수원장안)","계약",48,12008891,"분과심의 대상자",1,"2차 납부최고","2026-10-13","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····112","전세(수원장안)","계약",36,11710087,"분과심의 대상자",1,"2차 납부최고","2026-10-16","1차 납부최고","110002000",0,"10월 조치: 1차 납부최고 / 누락 해소 / 납부 2개월분"],["4200····112","전세(수원권선)","계약",41,11397181,"강제집행 대상자",1,"강제집행 검토","2026-09-12","1차 납부최고","222222222",0,""],["4200····537","전세(광명)","해약",32,10764406,"특수채권",1,"소송정보입력","2026-08-26","1차 납부최고","222222000",0,""],["4200····746","전세(인천동구)","계약",30,8695835,"제소대상자",1,"소송정보입력","2026-09-21","1차 납부최고","222222200",0,"납부 1개월분"],["4200····593","전세(광명)","해약",47,8571765,"특수채권",1,"소송정보입력","2026-08-25","1차 납부최고","222222200",0,"납부 1개월분"],["4200····837","전세(시흥)","계약",37,8131638,"제소대상자",1,"소송정보입력","2026-09-09","1차 납부최고","222222200",0,""],["4200····996","전세(인천연수구)","계약",33,7718911,"분과심의 대상자",1,"2차 납부최고","2026-10-26","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····856","전세(인천서구)","계약",34,7460392,"분과심의 대상자",1,"2차 납부최고","2026-10-17","1차 납부최고","110002022",0,"10월 조치: 1차 납부최고 / 누락 해소 / 납부 2개월분"],["4200····894","전세(인천연수구)","계약",23,7086333,"분과심의 대상자",1,"2차 납부최고","2026-10-20","1차 납부최고","110002000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····018","전세(수원권선)","해약",34,7006492,"특수채권",1,"소송정보입력","2026-09-16","1차 납부최고","222222000",0,"납부 1개월분"],["4200····947","전세(시흥)","계약",28,6351486,"분과심의 대상자",1,"2차 납부최고","2026-10-18","1차 납부최고","110002000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····234","전세(수원장안)","계약",46,5889677,"분과심의 대상자",1,"2차 납부최고","2026-10-01","1차 납부최고","110002022",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····628","전세(수원영통)","계약",46,5764157,"분과심의 대상자",1,"2차 납부최고","2026-10-26","1차 납부최고","110002000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····840","전세(인천중구)","해약",41,5372376,"특수채권",1,"소송정보입력","2026-08-22","1차 납부최고","222222022",0,""],["4200····443","전세(인천중구)","계약",36,5327813,"강제집행 대상자",1,"강제집행 검토","2026-09-05","1차 납부최고","222222222",0,""],["4200····113","전세(고양)","계약",39,5246147,"제소대상자",1,"제소","2026-09-11","1차 납부최고","222220000",0,"납부 1개월분"],["4200····670","전세(인천계양구)","계약",36,5193541,"제소대상자",1,"제소","2026-09-11","1차 납부최고","222222022",0,"납부 1개월분"],["4200····361","전세(수원팔달)","계약",13,4398065,"분과심의 대상자",1,"2차 납부최고","2026-10-05","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····764","전세(인천남동구)","계약",21,4299347,"분과심의 대상자",1,"분과심의 상정","2026-09-30","1차 납부최고","221200000",0,"납부 3개월분"],["4200····865","전세(하남)","계약",31,4155035,"분과심의 대상자",1,"2차 납부최고","2026-10-23","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 납부 1개월분"],["4200····658","전세(안산)","계약",15,3680517,"분과심의 대상자",1,"2차 납부최고","2026-10-28","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····710","전세(안산)","계약",23,3260503,"분과심의 대상자",1,"2차 납부최고","2026-10-19","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····676","전세(수원장안)","해약",18,3005039,"특수채권",1,"소송정보입력","2026-09-12","1차 납부최고","222222000",0,""],["4200····767","전세(수원장안)","계약",32,2936245,"분과심의 대상자",1,"2차 납부최고","2026-10-27","1차 납부최고","110002000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····457","전세(인천연수구)","계약",10,2873388,"중기체납자",1,"2차 납부최고","2026-10-24","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····656","전세(인천부평구)","계약",9,2316939,"중기체납자",1,"2차 납부최고","2026-10-18","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····812","전세(화성)","계약",15,2273937,"분과심의 대상자",1,"분과심의 상정","2026-09-29","1차 납부최고","221202020",0,""],["4200····993","전세(안산)","계약",11,2086478,"중기체납자",1,"2차 납부최고","2026-10-25","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····782","전세(인천서구)","계약",17,2043968,"분과심의 대상자",1,"2차 납부최고","2026-10-26","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소 / 분류 변경: 장기체납자 → 분과심의 대상자"],["4200····206","전세(인천계양구)","계약",12,1899219,"분과심의 대상자",1,"2차 납부최고","2026-10-23","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 분류 변경: 중기체납자 → 분과심의 대상자"],["4200····324","전세(수원장안)","계약",19,1673306,"분과심의 대상자",1,"분과심의 상정","2026-10-11","1차 납부최고","222200000",0,"10월 조치: 분과심의 상정 여부 검토 / 검토 결과 분과심의 상정 대상"],["4200····513","전세(부천)","계약",14,1417163,"장기체납자",1,"2차 납부최고","2026-10-15","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····189","전세(인천연수구)","계약",10,1109924,"중기체납자",1,"2차 납부최고","2026-10-17","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소 / 납부 1개월분"],["4200····610","전세(고양)","계약",12,1056104,"장기체납자",1,"2차 납부최고","2026-10-31","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소 / 분류 변경: 중기체납자 → 장기체납자"],["4200····009","전세(수원장안)","계약",7,1003140,"중기체납자",1,"2차 납부최고","2026-10-20","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고"],["4200····161","전세(인천연수구)","계약",10,936824,"중기체납자",1,"2차 납부최고","2026-10-21","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····810","전세(시흥)","해약",4,572835,"특수채권",1,"제소","2026-09-06","1차 납부최고","222000000",0,""],["4200····015","전세(인천중구)","계약",8,459157,"중기체납자",1,"2차 납부최고","2026-10-04","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····993","전세(용인)","계약",40,6569924,"소송유예자",2,"익월 재검토","2026-09-23","1차 납부최고","222200000",0,""],["4200····692","전세(인천부평구)","계약",21,5550572,"소송유예자",2,"익월 재검토","2026-09-22","1차 납부최고","222220000",0,""],["4200····097","전세(인천동구)","계약",25,10054614,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-24","1차 납부최고","222222220",0,""],["4200····630","전세(수원영통)","계약",43,7092806,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-14","1차 납부최고","222222220",0,"납부 3개월분"],["4200····101","전세(인천동구)","계약",23,3514787,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-27","1차 납부최고","222222220",0,""],["4200····130","전세(고양)","계약",29,2649261,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-23","1차 납부최고","222222220",0,""],["4200····509","전세(인천미추홀구)","계약",8,2082252,"중기체납자",3,"없음(필요조치 완료)","2026-09-14","1차 납부최고","221000000",0,""],["4200····602","전세(인천연수구)","계약",24,1427998,"장기체납자",3,"없음(필요조치 완료)","2026-10-22","1차 납부최고","222200000",0,"10월 조치: 분과심의 상정 여부 검토"],["4200····539","전세(인천서구)","계약",4,1283656,"중기체납자",3,"없음(필요조치 완료)","2026-09-21","1차 납부최고","222200000",0,"납부 3개월분"],["4200····078","전세(인천계양구)","해약",11,1096469,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-15","1차 납부최고","222222220",0,""],["4200····470","전세(하남)","계약",4,1001354,"단기체납자",3,"없음(필요조치 완료)","2026-08-30","1차 납부최고","222000000",0,""],["4200····222","전세(인천남동구)","계약",5,895418,"단기체납자",3,"없음(필요조치 완료)","2026-08-31","1차 납부최고","222200000",0,"납부 1개월분"],["4200····252","전세(하남)","계약",10,665988,"중기체납자",3,"없음(필요조치 완료)","2026-09-05","1차 납부최고","222000000",0,""],["4200····897","전세(인천남동구)","계약",3,632112,"단기체납자",3,"없음(필요조치 완료)","2026-09-19","1차 납부최고","222000000",0,"납부 3개월분"],["4200····083","전세(인천동구)","계약",4,622990,"중기체납자",3,"없음(필요조치 완료)","2026-09-06","1차 납부최고","222200000",0,"납부 3개월분"],["4200····459","전세(안산)","계약",4,327127,"단기체납자",3,"없음(필요조치 완료)","2026-09-29","1차 납부최고","210000000",0,"납부 1개월분"],["4200····741","전세(인천부평구)","계약",4,294313,"단기체납자",3,"없음(필요조치 완료)","2026-10-05","1차 납부최고","110000000",0,"10월 조치: 1차 납부최고 / 누락 해소"],["4200····985","전세(부천)","계약",39,13559629,"분과심의 대상자",0,"1차 납부최고","2025-07-19","최종독려","110002000",0,""],["4200····402","전세(광명)","계약",46,12081765,"분과심의 대상자",0,"1차 납부최고","2025-10-17","최종독려","110000000",0,"납부 2개월분"],["4200····793","전세(인천부평구)","해약",48,11480312,"특수채권",0,"제소","2024-01-03","최종독려","222220000",0,""],["4200····134","전세(광명)","계약",41,9766640,"분과심의 대상자",0,"1차 납부최고","2026-05-06","최종독려","110000000",0,""],["4200····878","전세(인천남동구)","계약",44,9662395,"분과심의 대상자",0,"1차 납부최고","2026-01-19","최종독려","110000000",0,""],["4200····092","전세(시흥)","해약",39,8817125,"특수채권",0,"제소","2025-09-06","최종독려","110000000",0,""],["4200····489","전세(인천서구)","해약",30,8683771,"특수채권",0,"제소","2026-05-28","최종독려","222222020",0,""],["4200····594","전세(광명)","해약",25,8639643,"특수채권",0,"제소","2023-12-24","최종독려","110000000",0,""],["4200····362","전세(인천중구)","계약",37,8371305,"분과심의 대상자",0,"1차 납부최고","2024-07-03","최종독려","110000000",0,""],["4200····829","전세(부천)","계약",46,8282334,"분과심의 대상자",0,"분과심의 상정","2026-05-22","최종독려","221202022",0,""],["4200····303","전세(하남)","계약",29,7808500,"분과심의 대상자",0,"1차 납부최고","2024-01-10","최종독려","110000000",0,"납부 1개월분"],["4200····557","전세(인천부평구)","계약",18,5760697,"분과심의 대상자",0,"2차 납부최고","2026-01-01","최종독려","210000000",0,""],["4200····738","전세(부천)","해약",24,5240960,"특수채권",0,"제소","2026-07-03","최종독려","110000000",0,""],["4200····588","전세(수원팔달)","계약",19,5077069,"분과심의 대상자",0,"1차 납부최고","2025-08-23","최종독려","110000000",0,""],["4200····387","전세(수원팔달)","해약",30,4815543,"특수채권",0,"제소","2024-01-21","최종독려","110000000",0,""],["4200····136","전세(수원팔달)","계약",28,4607968,"분과심의 대상자",0,"1차 납부최고","2025-09-16","최종독려","110002022",0,"납부 1개월분"],["4200····342","전세(인천미추홀구)","계약",17,4335082,"분과심의 대상자",0,"1차 납부최고","2024-01-06","최종독려","110000000",0,""],["4200····689","전세(고양)","계약",17,4038616,"분과심의 대상자",0,"1차 납부최고","2026-01-22","최종독려","110000000",0,""],["4200····662","전세(수원장안)","해약",11,3892810,"특수채권",0,"제소","2024-08-04","최종독려","110000000",0,""],["4200····255","전세(인천연수구)","계약",26,3711428,"분과심의 대상자",0,"1차 납부최고","2024-03-12","최종독려","110000000",0,""],["4200····415","전세(시흥)","계약",16,3701164,"분과심의 대상자",0,"1차 납부최고","2025-10-07","최종독려","110002000",0,""],["4200····425","전세(인천서구)","계약",10,3523025,"분과심의 대상자",0,"1차 납부최고","2025-05-22","최종독려","110000000",0,"납부 3개월분"],["4200····218","전세(시흥)","해약",31,3480850,"특수채권",0,"제소","2024-05-19","최종독려","110000000",0,""],["4200····961","전세(하남)","계약",16,2452862,"분과심의 대상자",0,"1차 납부최고","2024-01-01","최종독려","110000000",0,""],["4200····302","전세(하남)","계약",43,2261420,"분과심의 대상자",0,"1차 납부최고","2024-09-28","최종독려","110000000",0,"납부 2개월분"],["4200····207","전세(하남)","계약",24,2210960,"분과심의 대상자",0,"1차 납부최고","2026-08-20","최종독려","110002000",0,"누락 신규"],["4200····229","전세(인천미추홀구)","해약",8,2068214,"특수채권",0,"제소","2024-11-05","최종독려","110000000",0,""],["4200····912","전세(부천)","계약",30,1996855,"분과심의 대상자",0,"1차 납부최고","2026-01-01","최종독려","110002000",0,""],["4200····645","전세(수원장안)","계약",10,1946935,"중기체납자",0,"1차 납부최고","2026-01-17","최종독려","110000000",0,""],["4200····210","전세(화성)","해약",10,1905240,"특수채권",0,"제소","2026-08-30","최종독려","110000000",0,"누락 신규"],["4200····347","전세(인천남동구)","계약",43,1796450,"장기체납자",0,"분과심의 상정 여부 검토","2024-12-15","최종독려","222200000",0,""],["4200····439","전세(용인)","계약",5,1412606,"단기체납자",0,"1차 납부최고","2024-03-24","최종독려","110000000",0,""],["4200····916","전세(수원장안)","계약",6,877634,"중기체납자",0,"2차 납부최고","2025-01-01","최종독려","222000000",0,"누락 신규 / 분류 변경: 단기체납자 → 중기체납자"],["4200····952","전세(인천서구)","해약",4,786377,"특수채권",0,"제소","2024-12-26","최종독려","110000000",0,""],["4200····970","전세(고양)","해약",12,781369,"특수채권",0,"제소","2024-12-21","최종독려","110000000",0,""],["4200····276","전세(인천계양구)","해약",4,710819,"특수채권",0,"제소","2025-05-15","최종독려","110000000",0,""],["4200····451","전세(용인)","계약",4,416004,"단기체납자",0,"1차 납부최고","2026-05-29","최종독려","110000000",0,"납부 1개월분"],["4200····549","전세(고양)","계약",3,150866,"단기체납자",0,"1차 납부최고","2024-05-14","최종독려","110000000",0,"납부 1개월분"],["4200····898","전세(화성)","계약",49,18984041,"제소대상자",1,"소송통고 2차","2026-09-09","최종독려","222222000",0,""],["4200····235","전세(인천계양구)","해약",40,12502197,"특수채권",1,"소송정보입력","2025-01-20","최종독려","222222200",0,"납부 1개월분"],["4200····148","전세(수원팔달)","계약",32,8464346,"제소대상자",1,"소송정보입력","2026-06-15","최종독려","222222200",0,""],["4200····911","전세(안산)","계약",12,1678096,"분과심의 대상자",1,"분과심의 상정","2026-09-07","최종독려","221200000",0,"분류 변경: 중기체납자 → 분과심의 대상자"],["4200····253","전세(수원영통)","해약",3,1062600,"특수채권",1,"제소","2026-10-05","최종독려","",0,"신규 체납"],["4200····243","전세(부천)","계약",3,1062600,"단기체납자",1,"1차 납부최고","2026-09-22","최종독려","",0,"신규 체납"],["4200····171","전세(안산)","해약",3,910800,"특수채권",1,"제소","2026-10-16","최종독려","",0,"신규 체납"],["4200····913","전세(부천)","계약",3,850080,"단기체납자",1,"1차 납부최고","2026-09-12","최종독려","",0,"신규 체납"],["4200····057","전세(하남)","계약",3,698280,"단기체납자",1,"1차 납부최고","2026-09-28","최종독려","",0,"신규 체납"],["4200····612","전세(수원영통)","계약",3,698280,"단기체납자",1,"1차 납부최고","2026-10-17","최종독려","",0,"신규 체납"],["4200····792","전세(인천남동구)","계약",3,607200,"단기체납자",1,"1차 납부최고","2026-10-14","최종독려","",0,"신규 체납"],["4200····164","전세(고양)","계약",3,607200,"단기체납자",1,"1차 납부최고","2026-10-25","최종독려","",0,"신규 체납"],["4200····862","전세(인천중구)","계약",3,607200,"단기체납자",1,"1차 납부최고","2026-09-27","최종독려","",0,"신규 체납"],["4200····947","전세(부천)","계약",3,546480,"단기체납자",1,"1차 납부최고","2026-10-08","최종독려","",0,"신규 체납"],["4200····016","전세(인천계양구)","계약",3,546480,"단기체납자",1,"1차 납부최고","2026-09-17","최종독려","",0,"신규 체납"],["4200····076","전세(하남)","해약",6,497990,"특수채권",1,"제소","2026-09-16","최종독려","222000000",0,""],["4200····325","전세(인천계양구)","계약",3,455400,"단기체납자",1,"1차 납부최고","2026-09-12","최종독려","",0,"신규 체납"],["4200····780","전세(인천부평구)","계약",3,394680,"단기체납자",1,"1차 납부최고","2026-09-12","최종독려","",0,"신규 체납"],["4200····962","전세(고양)","계약",3,303600,"단기체납자",1,"1차 납부최고","2026-09-14","최종독려","",0,"신규 체납"],["4200····974","전세(안산)","계약",14,4594272,"분과심의 보류 대상자",2,"익월 재검토","2025-07-18","최종독려","110000000",0,""],["4200····859","전세(인천서구)","계약",20,4189416,"분과심의 보류 대상자",2,"익월 재검토","2024-11-05","최종독려","110000000",0,""],["4200····912","전세(용인)","계약",31,3090842,"제소대상자",3,"없음(소송 진행 중·법원 결과 대기)","2026-09-16","최종독려","222222220",0,""],["4200····320","전세(인천동구)","계약",9,2869621,"중기체납자",3,"없음(필요조치 완료)","2026-09-06","최종독려","222000000",0,""],["4200····882","전세(안산)","해약",10,2768748,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-06-09","최종독려","222222222",0,"납부 1개월분"],["4200····894","전세(인천연수구)","계약",5,914556,"단기체납자",3,"없음(필요조치 완료)","2026-08-17","최종독려","221200000",0,""],["4200····243","전세(인천미추홀구)","해약",4,682478,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","2026-08-18","최종독려","222222220",0,"납부 1개월분"],["4200····492","전세(수원팔달)","계약",11,474202,"중기체납자",3,"없음(필요조치 완료)","2024-02-23","최종독려","221000000",0,""],["4200····891","전세(수원팔달)","계약",4,333607,"단기체납자",3,"없음(필요조치 완료)","2024-11-29","최종독려","222200000",0,"납부 1개월분"],["4200····985","전세(화성)","계약",46,12630058,"분과심의 대상자",1,"1차 납부최고","","조치 이력 없음","110000000",1,""],["4200····005","전세(안산)","해약",30,4936805,"특수채권",1,"제소","","조치 이력 없음","110000000",1,"납부 1개월분"],["4200····794","전세(인천계양구)","계약",40,3803043,"분과심의 대상자",1,"1차 납부최고","","조치 이력 없음","110000000",1,""],["4200····292","전세(고양)","계약",11,3704894,"분과심의 대상자",1,"1차 납부최고","","조치 이력 없음","110000000",1,"납부 2개월분"],["4200····298","전세(안산)","계약",9,2119916,"중기체납자",1,"1차 납부최고","","조치 이력 없음","110000000",1,"납부 1개월분"],["4200····160","전세(시흥)","해약",10,1920457,"특수채권",1,"소송정보입력","","조치 이력 없음","222222000",0,"납부 3개월분"],["4200····524","전세(인천서구)","계약",6,1212338,"중기체납자",1,"1차 납부최고","","조치 이력 없음","110000000",1,"분류 변경: 단기체납자 → 중기체납자"],["4200····429","전세(인천남동구)","계약",6,1164984,"중기체납자",1,"2차 납부최고","","조치 이력 없음","222000000",1,"분류 변경: 단기체납자 → 중기체납자"],["4200····159","전세(인천계양구)","계약",3,1144442,"단기체납자",1,"1차 납부최고","","조치 이력 없음","110000000",1,"납부 1개월분"],["4200····336","전세(부천)","계약",4,587116,"단기체납자",1,"1차 납부최고","","조치 이력 없음","110000000",1,""],["4200····094","전세(부천)","해약",41,12555924,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","","조치 이력 없음","222222220",0,""],["4200····642","전세(수원장안)","계약",5,1329048,"단기체납자",3,"없음(필요조치 완료)","","조치 이력 없음","210000000",0,"납부 1개월분"],["4200····332","전세(고양)","해약",8,920842,"특수채권",3,"없음(소송 진행 중·법원 결과 대기)","","조치 이력 없음","222222222",0,""],["4200····517","전세(인천부평구)","계약",11,581456,"중기체납자",3,"없음(필요조치 완료)","","조치 이력 없음","222000000",0,""]],"prev":{"체납세대 수":[500,499],"계약자":[394,392],"해약자":[106,107],"체납금액 (총액)":[2587736562,2612464064],"원금":[2290303809,2308726528],"연체료":[195755344,204010848],"세대당 평균 체납액":[5175473,5235399],"평균 체납개월":[26,26.1],"최근 3개월 납부 세대":[273,267],"관리필요세대":[353,340],"그중 누락 의심(방치)":[169,150],"그중 확인 필요(조치일 없음)":[24,9],"관리중 세대":[126,139],"예외분류(익월 재검토) 세대":[21,20],"예외(6개월치 이상 납부) 세대":[0,0],"시도: 경기도 세대":[303,298],"시도: 인천광역시 세대":[197,201]},"flow":[["9월 체납세대",500,2587736562],["(−) 완납 해소",-13,-49192579],["(−) 체납 3개월 미만으로 감소",-2,-1208188],["(+) 신규 체납 (3개월 도달)",14,9350880],["(±) 계속 체납 세대 금액 변동","",65777389],["10월 체납세대",499,2612464064]],"done":[["제소",36,13],["1차 납부최고",27,16],["소송정보입력",17,0],["2차 납부최고",14,5],["소송통고 2차",13,1],["분과심의 상정",13,3],["강제집행 검토",6,0],["판결 선고",5,0],["분과심의 상정 여부 검토",5,0]],"prevNext":{"제소":102,"소송정보입력":50,"2차 납부최고":40,"1차 납부최고":73,"소송통고 2차":33,"분과심의 상정":23,"분과심의 상정 여부 검토":17,"강제집행 검토":15},"prevCls":{"강제집행 대상자":15,"제소대상자":153,"소송유예자":14,"생활안정지원대상자":5,"분과심의 대상자":110,"분과심의 보류 대상자":2,"장기체납자":22,"중기체납자":37,"단기체납자":36,"특수채권":106},"crit":{"설명":"체납관리 분류도구 ver.4 판단 기준값. 숫자만 바꾸면 HTML·Python 도구가 바뀐 기준으로 분류합니다. 근거: 참고자료/A01~A05기준 및 필요추가정보_ver.2.txt","단기체납_시작_개월":3,"중기체납_시작_개월":6,"장기체납_시작_개월":12,"특수채권_최소_체납개월":3,"분과심의_보증금잠식률_기준_퍼센트":50,"예외_최근3개월납부_월임대료_배수":6,"소송유예_최근3개월납부_월임대료_배수":3,"강제집행_최근3개월납부_월임대료_배수_이하":1,"누락_판단_개월":2}};
+const $ = s => document.querySelector(s), el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
+const fmt = n => Number(n).toLocaleString('ko-KR');
+const won = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? fmt(Math.round(n / 1e4)) + '만' : fmt(n);
+const sido = g => g.includes('인천') ? '인천광역시' : '경기도';
+const STATES = [['누락 의심', '--s-miss'], ['관리필요', '--s-need'], ['익월 재검토', '--s-hold'], ['관리중', '--s-ok']];
+const CLS = ['강제집행 대상자', '제소대상자', '소송유예자', '생활안정지원대상자', '분과심의 대상자', '분과심의 보류 대상자', '장기체납자', '중기체납자', '단기체납자', '특수채권'];
+const TITLES = { home: ['전체 현황', ''], list: ['세대 목록', '10월 체납세대'], data: ['데이터 넣기', '새 Excel로 화면 바꾸기'], a01: ['① 데이터 통합', '김태경 · A01'], a02: ['② 대상자 분류', '신미림 · A02 ~ A04'], a05: ['③ 월 결산 보고', '여현서 · A05'], team: ['팀 · 협업 규칙', ''] };
+const F = { sido: '', gu: '', con: '' };
+const pass = (gu, con) => (!F.sido || sido(gu) === F.sido) && (!F.gu || gu === F.gu) && (!F.con || con === F.con);
+const filtered = () => !!(F.sido || F.gu || F.con);
+
+/* tooltip */
+const tip = $('#tip');
+document.addEventListener('mousemove', e => { const t = e.target.closest('[data-tip]'); if (!t) { tip.style.display = 'none'; return; } tip.innerHTML = t.dataset.tip; tip.style.display = 'block'; const w = tip.offsetWidth; tip.style.left = Math.min(e.clientX + 12, innerWidth - w - 8) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; });
+
+/* horizontal bars: items = [{label, segs:[{v,color,name}], note}] */
+function bars(id, items, opt = {}) {
+  const box = $(id); box.innerHTML = '';
+  const max = Math.max(1, ...items.map(i => i.segs.reduce((a, s) => a + s.v, 0)));
+  if (!items.some(i => i.segs.some(s => s.v))) { box.append(el('div', 'empty', '해당하는 세대가 없습니다.')); return; }
+  if (opt.lw) box.style.setProperty('--lw', opt.lw + 'px');
+  for (const it of items) {
+    const tot = it.segs.reduce((a, s) => a + s.v, 0);
+    const r = el('div', 'br'); r.append(el('div', 'lb', it.label)); r.firstChild.title = it.label.replace(/<[^>]+>/g, '');
+    if (it.go) { r.firstChild.classList.add('clk'); r.firstChild.title += ' · 눌러서 세대 목록 보기'; r.firstChild.addEventListener('click', () => goList(it.go)); }
+    const tr = el('div', 'tr');
+    for (const s of it.segs) { if (!s.v) continue; const g = el('div', 'sg'); g.style.width = (s.v / max * 100) + '%'; g.style.background = `var(${s.color})`; g.dataset.tip = s.tip ? s.tip : `<b>${it.label.replace(/<[^>]+>/g, '')}</b><br>${s.name} ${fmt(s.v)}세대` + (tot ? ` (${Math.round(s.v / tot * 100)}%)` : ''); if (s.go) { g.classList.add('clk'); g.dataset.tip += '<br><span style="opacity:.75">눌러서 세대 목록 보기</span>'; g.addEventListener('click', () => goList(s.go)); } tr.append(g); }
+    r.append(tr, el('div', 'n', fmt(it.shown ?? tot) + (it.note ? `<span style="color:var(--ink3);font-weight:400"> ${it.note}</span>` : ''))); box.append(r);
+  }
+}
+const stateSegs = (rows, go) => STATES.map(([name, color], k) => ({ v: rows.filter(r => r[6] === k).length, color, name, go: go ? { ...go, state: k } : null }));
+const legend = id => { $(id).innerHTML = STATES.map(([n, c], k) => `<span class="clk" data-k="${k}" title="눌러서 ${n} 세대 목록 보기"><i style="background:var(${c})"></i>${n}</span>`).join(''); };
+const NX = k => ({ label: '다음 할 일: ' + k, fn: r => r[7] === k });
+const KGO = [{}, {}, { state: 0 }, { lx: { label: '관리필요(누락 포함)', fn: r => r[6] < 2 } }, { state: 2 }, { state: 3 }];
+/* ver.3: 세대별 조치 진행(r[10] = 9단계 '2'완료 '1'대상 '0'해당없음, 김태경 통합데이터) */
+const SHORT9 = ['납부최고 1차', '납부최고 2차', '가옥명도', '분과심의', '소송통고 1차', '제소의뢰', '소송통고 2차', '본안소송', '판결'];
+const TERM = [['3개월 미만', r => r[3] < 3], ['3~5개월 (단기)', r => r[3] >= 3 && r[3] <= 5], ['6~11개월 (중기)', r => r[3] >= 6 && r[3] <= 11], ['12개월 이상 (장기)', r => r[3] >= 12]];
+D.hh.forEach(r => { r[13] = (r[10] || '').split('').filter(x => x === '2').length; });
+const LIT = r => (r[10] || '')[5] === '2';
+const NOACT = r => !!r[10] && !r[10].includes('2');
+let KGO2 = [];
+const dots = r => SHORT9.map((n, i) => { const v = (r[10] || '')[i]; const k = v === '2' ? 'd2' : v === '1' ? 'd1' : 'd0'; const t = v === '2' ? '완료' : v === '1' ? '대상(아직 안 함)' : r[10] ? '해당 없음' : '통합데이터에 없음'; return `<td class="dc"><span class="dt ${k}" data-tip="<b>${n}</b><br>${t}"></span></td>`; }).join('');
+
+function render() {
+  const H = D.hh.filter(r => pass(r[1], r[2])), I = D.integ.filter(r => pass(r[0], r[1]));
+  const st = k => H.filter(r => r[6] === k).length, need = st(0) + st(1);
+  $('#fReset').hidden = !filtered();
+  /* pipeline */
+  $('#p1').innerHTML = `${fmt(I.length)}<small>계약 · 매핑 실패 ${D.mapFail}</small>`;
+  $('#p2').innerHTML = `${fmt(need)}<small>세대 조치 필요 · 분류 ${new Set(H.map(r => r[5])).size}종</small>`;
+  $('#p3').innerHTML = `${won(H.reduce((a, r) => a + r[4], 0))}<small>원 체납 · ${fmt(H.length)}세대</small>`;
+  /* KPI */
+  const sum = H.reduce((a, r) => a + r[4], 0), P = D.prev;
+  const delta = (cur, key, unit) => { if (filtered() || !P[key]) return filtered() ? '필터 적용 중' : ''; const d = cur - P[key][0]; if (!d) return '9월과 같음'; return `9월 대비 ${d > 0 ? '▲' : '▼'} ${unit === '원' ? won(Math.abs(d)) + '원' : fmt(Math.abs(d)) + unit}`; };
+  const K = [['체납세대', fmt(H.length), '세대', delta(H.length, '체납세대 수', '세대'), ''], ['체납금액', won(sum), '원', delta(sum, '체납금액 (총액)', '원'), ''],
+    ['누락 의심', fmt(st(0)), '세대', delta(st(0), '그중 누락 의심(방치)', '세대'), '--s-miss'], ['관리필요', fmt(need), '세대', delta(need, '관리필요세대', '세대'), '--s-need'],
+    ['익월 재검토', fmt(st(2)), '세대', delta(st(2), '예외분류(익월 재검토) 세대', '세대'), '--s-hold'], ['관리중', fmt(st(3)), '세대', delta(st(3), '관리중 세대', '세대'), '--s-ok']];
+  $('#kpis').innerHTML = K.map((k, i) => `<div class="kpi clk" data-i="${i}" title="눌러서 세대 목록 보기"><div class="l">${k[4] ? `<i style="background:var(${k[4]})"></i>` : ''}${k[0]}${k[0] === '관리필요' ? ' <span style="color:var(--ink3)">(누락 포함)</span>' : ''}</div><div class="v">${k[1]}<small>${k[2]}</small></div><div class="d">${k[3]}</div></div>`).join('');
+  /* ver.3: 보조 KPI (김태경 님 대시보드 요소) */
+  const avgM = H.length ? H.reduce((a, r) => a + r[3], 0) / H.length : 0;
+  const K2 = [['평균 체납기간', avgM.toFixed(1), '개월', '체납개월 평균', null], ['1건 평균 체납액', won(H.length ? sum / H.length : 0), '원', '체납액 ÷ 세대 수', null],
+    ['소송 단계 진입', fmt(H.filter(LIT).length), '세대', '제소의뢰까지 완료', { lx: { label: '소송 단계 진입(제소의뢰 이후)', fn: LIT } }],
+    ['아직 조치 전', fmt(H.filter(NOACT).length), '세대', '완료한 조치 단계 없음', { lx: { label: '아직 조치 전', fn: NOACT } }]];
+  KGO2 = K2.map(k => k[4]);
+  $('#kpis2').innerHTML = K2.map((k, i) => `<div class="kpi${k[4] ? ' clk' : ''}" data-j="${i}"${k[4] ? ' title="눌러서 세대 목록 보기"' : ''}><div class="l">${k[0]}</div><div class="v">${k[1]}<small>${k[2]}</small></div><div class="d">${k[3]}</div></div>`).join('');
+  /* classification */
+  const cls = CLS.map(c => ({ label: c, go: { cls: c }, segs: stateSegs(H.filter(r => r[5] === c), { cls: c }) })).filter(i => i.segs.some(s => s.v));
+  bars('#chCls', cls); bars('#chCls2', cls);
+  /* next action */
+  const nx = {}; for (const r of H) if (r[6] < 2) { (nx[r[7]] = nx[r[7]] || [0, 0])[r[6]]++; }
+  const nextItems = withPrev => Object.entries(nx).sort((a, b) => (b[1][0] + b[1][1]) - (a[1][0] + a[1][1])).map(([k, v]) => ({ label: k, go: { lx: NX(k) }, note: withPrev && !filtered() && D.prevNext[k] != null ? `(${D.prevNext[k]})` : '', segs: [{ v: v[0], color: '--s-miss', name: '누락 의심', go: { lx: NX(k), state: 0 } }, { v: v[1], color: '--s-need', name: '관리필요', go: { lx: NX(k), state: 1 } }] }));
+  bars('#chNextHome', nextItems(false), { lw: 150 }); bars('#chNext', nextItems(true), { lw: 150 });
+  /* A01 */
+  bars('#chStage', D.STAGES.map((s, i) => ({ label: `${i + 1}. ${s}`, shown: I.filter(r => r[2][i] === '2').length, segs: [{ v: I.filter(r => r[2][i] === '2').length, color: '--bar', name: '완료' }, { v: I.filter(r => r[2][i] === '1').length, color: '--bar-soft', name: '대상 · 미수행' }] })), { lw: 150 });
+  const curOrder = ['조치 전', ...D.STAGES];
+  bars('#chCur', curOrder.map(s => ({ label: s, segs: [{ v: I.filter(r => r[3] === s).length, color: '--bar', name: '현재 단계' }] })), { lw: 150 });
+  /* A02 extras */
+  const term = [['3~5개월 (단기)', r => r[3] <= 5], ['6~11개월 (중기)', r => r[3] >= 6 && r[3] <= 11], ['12개월 이상 (장기)', r => r[3] >= 12]];
+  bars('#chTerm', term.map(([l, f]) => { const lx = { label: '체납기간: ' + l, fn: f }; return { label: l, go: { lx }, segs: stateSegs(H.filter(f), { lx }) }; }));
+  bars('#chHold', ['소송유예자', '생활안정지원대상자', '분과심의 보류 대상자'].map(c => ({ label: c, go: { cls: c, state: 2 }, note: !filtered() && D.prevCls[c] != null ? `(9월 ${D.prevCls[c]})` : '', segs: [{ v: H.filter(r => r[5] === c && r[6] === 2).length, color: '--s-hold', name: '익월 재검토', go: { cls: c, state: 2 } }] })), { lw: 150 });
+  /* A05 */
+  const gus = [...new Set(H.map(r => r[1]))].map(g => ({ label: g.replace(/^전세\((.+)\)$/, '$1'), go: { gu: g }, segs: stateSegs(H.filter(r => r[1] === g), { gu: g }) })).sort((a, b) => b.segs.reduce((x, s) => x + s.v, 0) - a.segs.reduce((x, s) => x + s.v, 0));
+  bars('#chGu', gus, { lw: 96 });
+  /* ver.3: 지자체별 체납액 상위 10 (김태경 님 대시보드 요소) */
+  const amt = [...new Set(H.map(r => r[1]))].map(g => { const rr = H.filter(r => r[1] === g); return { g, a: rr.reduce((x, r) => x + r[4], 0), n: rr.length }; }).sort((a, b) => b.a - a.a).slice(0, 10);
+  bars('#chAmt', amt.map(o => { const l = o.g.replace(/^전세\((.+)\)$/, '$1'); return { label: l, go: { gu: o.g }, shown: Math.round(o.a / 1e4), segs: [{ v: o.a, color: '--bar', name: '체납액', go: { gu: o.g }, tip: `<b>${l}</b><br>체납액 ${fmt(Math.round(o.a / 1e4))}만원 · ${fmt(o.n)}세대` }] }; }), { lw: 96 });
+  listPage = 1; renderList();
+}
+
+/* static parts */
+function renderStatic() {
+  $('#fbase').textContent = D.base; ['#lgState', '#lgState2', '#lgState3'].forEach(legend);
+  const gs = [...new Set(D.hh.map(r => r[1]))].sort(); $('#fGu').innerHTML = '<option value="">지자체 전체</option>' + gs.map(g => `<option value="${g}">${g.replace(/^전세\((.+)\)$/, '$1')}</option>`).join('');
+  $('#mapSrc').textContent = `통합데이터 설명 시트 · ${D.made} 생성 · 매핑 실패 ${D.mapFail}건`;
+  $('#tbFiles').innerHTML = '<tr><th>원천 파일</th><th class="r">원본 행</th><th class="r">통합 반영</th><th>결과</th></tr>' + D.files.map(f => `<tr><td>${f[1].replace(/_선별데이터.*|\(가상\).*/, '')}</td><td class="r">${fmt(f[2])}</td><td class="r">${fmt(f[3])}</td><td>${f[2] === f[3] ? '<span class="okmark">✓</span> 전부 매핑' : `${f[2] - f[3]}건 실패`}</td></tr>`).join('');
+  $('#flow').innerHTML = !D.flow.length ? '<div class="empty">넣은 데이터에는 전월 비교 자료가 없습니다.</div>' : D.flow.filter(f => f[1] !== '').map((f, i, a) => `<div class="fl ${i === 0 || i === a.length - 1 ? 'end' : ''}"><div class="l">${f[0].replace(/\(±\).*/, '')}</div><div class="v">${i === 0 || i === a.length - 1 ? fmt(f[1]) : (f[1] > 0 ? '+' : '−') + fmt(Math.abs(f[1]))}<small style="font-size:12px;font-weight:500;color:var(--ink3)"> 세대</small></div><div class="l">${won(Math.abs(f[2]))}원</div></div>`).join('');
+  $('#tbDone').innerHTML = !D.done.length ? '<tr><td style="color:var(--ink3)">넣은 데이터에는 이번 달 수행 실적 자료가 없습니다.</td></tr>' : '<tr><th>수행 조치</th><th class="r">세대</th><th class="r">그중 9월 누락 의심</th></tr>' + D.done.map(d => `<tr><td>${d[0]}</td><td class="r">${fmt(d[1])}</td><td class="r">${fmt(d[2])}</td></tr>`).join('');
+  const c = D.crit, cr = [['단기 · 중기 · 장기 체납 시작', `${c['단기체납_시작_개월']} · ${c['중기체납_시작_개월']} · ${c['장기체납_시작_개월']}개월`], ['특수채권 (해약) 최소 체납', `${c['특수채권_최소_체납개월']}개월`], ['분과심의 대상 보증금잠식률', `${c['분과심의_보증금잠식률_기준_퍼센트']}% 이상`], ['예외(보류): 최근 3개월 납부액', `월임대료 × ${c['예외_최근3개월납부_월임대료_배수']} 이상`], ['소송유예: 최근 3개월 납부액', `월임대료 × ${c['소송유예_최근3개월납부_월임대료_배수']} 이상`], ['강제집행: 최근 3개월 납부액', `월임대료 × ${c['강제집행_최근3개월납부_월임대료_배수_이하']} 이하`], ['누락 의심: 마지막 조치 후', `${c['누락_판단_개월']}개월 이상`]];
+  $('#crit').innerHTML = cr.map(x => `<div>${x[0]}</div><div>${x[1]}</div>`).join('');
+  $('#tCur').innerHTML = '<option value="">현재 단계 전체</option>' + [...new Set(D.hh.map(r => r[9]))].filter(Boolean).map(c => `<option>${c}</option>`).join('');
+  $('#tCls').innerHTML = '<option value="">최종분류 전체</option>' + CLS.map(c => `<option>${c}</option>`).join(''); $('#tState').innerHTML = '<option value="">관리 상태 전체</option>' + STATES.map((s, i) => `<option value="${i}">${s[0]}</option>`).join('');
+  renderDataInfo();
+}
+
+/* list */
+let listPage = 1, sortK = 4, sortD = -1;
+/* ver.2: 도표에서 넘어온 추가 조건(다음 할 일·체납기간 등). 목록 위 칩의 ×로 지움 */
+let LX = null;
+/* ver.4: 목록 보기 방식 — 'sum' 요약(ver.2 모양) / 'det' 상세(ver.3 모양) */
+let MODE = 'sum';
+function setMode(m) {
+  MODE = m === 'det' ? 'det' : 'sum';
+  [...$('#tMode').children].forEach(b => b.classList.toggle('on', b.dataset.m === MODE));
+  $('#v-list').classList.toggle('list-sum', MODE === 'sum');
+  if (MODE === 'sum') { $('#tTerm').value = ''; $('#tCur').value = ''; if (sortK === 13) { sortK = 4; sortD = -1; } }
+  listPage = 1; renderList();
+}
+function goList(o) {
+  o = o || {};
+  $('#q').value = ''; $('#tTerm').value = ''; $('#tCur').value = ''; $('#tCls').value = o.cls || ''; $('#tState').value = o.state == null ? '' : String(o.state); LX = o.lx || null;
+  if (o.gu !== undefined) { F.gu = o.gu; $('#fGu').value = o.gu; if (F.sido && o.gu && sido(o.gu) !== F.sido) { F.sido = ''; $('#fSido').value = ''; } render(); }
+  listPage = 1; renderList();
+  if (location.hash !== '#list') location.hash = '#list'; else route();
+}
+const COLS = [['계약번호', 0], ['지자체', 1], ['구분', 2], ['체납개월', 3, 1], ['체납액(원)', 4, 1], ['최종분류', 5], ['관리 상태', 6], ['다음 할 일', 7], ['마지막 조치일', 8], ['진행 단계', 13, 1]];
+function renderList() {
+  const q = $('#q').value.trim(), c = $('#tCls').value, s = $('#tState').value, tt = $('#tTerm').value, tc = $('#tCur').value;
+  const det = MODE === 'det', LCOLS = det ? COLS : COLS.filter(x => x[1] !== 13);
+  let R = D.hh.filter(r => pass(r[1], r[2]) && (!c || r[5] === c) && (s === '' || r[6] === +s) && (!LX || LX.fn(r)) && (tt === '' || TERM[+tt][1](r)) && (!tc || r[9] === tc) && (!q || (r[0] + r[1] + r[5] + r[7]).includes(q)));
+  R.sort((a, b) => (a[sortK] > b[sortK] ? 1 : a[sortK] < b[sortK] ? -1 : 0) * sortD);
+  $('#tCnt').innerHTML = `${fmt(R.length)}세대` + (LX ? `<span class="xchip">${LX.label}<button type="button" id="xclr" title="이 조건 지우기">×</button></span>` : '');
+  const show = R.slice(0, listPage * 30);
+  $('#tbList').innerHTML = '<tr>' + LCOLS.map(([n, k, r]) => `<th class="s ${r ? 'r' : ''}" data-k="${k}">${n}${sortK === k ? (sortD > 0 ? ' ↑' : ' ↓') : ''}</th>`).join('') + (det ? SHORT9.map(n => `<th class="dc">${n}</th>`).join('') : '') + '</tr>' + show.map(r => `<tr><td>${r[0]}</td><td>${r[1].replace(/^전세\((.+)\)$/, '$1')}</td><td>${r[2]}</td><td class="r">${r[3]}</td><td class="r">${fmt(r[4])}</td><td>${r[5]}</td><td><span class="chip"><i style="background:var(${STATES[r[6]][1]})"></i>${STATES[r[6]][0]}</span></td><td>${r[7]}</td><td>${r[8] || '<span style="color:var(--ink3)">기록 없음</span>'}</td>${det ? `<td class="r">${r[10] ? r[13] : '-'}</td>${dots(r)}` : ''}</tr>`).join('');
+  $('#more').hidden = show.length >= R.length; $('#more').textContent = `더 보기 (${fmt(R.length - show.length)}세대 남음)`;
+}
+$('#tbList').addEventListener('click', e => { const th = e.target.closest('th.s'); if (!th) return; const k = +th.dataset.k; sortD = sortK === k ? -sortD : ((k >= 3 && k <= 4) || k === 13 ? -1 : 1); sortK = k; renderList(); });
+['#q', '#tCls', '#tState', '#tTerm', '#tCur'].forEach(s => $(s).addEventListener('input', () => { listPage = 1; renderList(); }));
+$('#more').addEventListener('click', () => { listPage++; renderList(); });
+$('#tMode').addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (b && b.dataset.m !== MODE) setMode(b.dataset.m); });
+$('#tCnt').addEventListener('click', e => { if (e.target.id === 'xclr') { LX = null; listPage = 1; renderList(); } });
+$('#kpis').addEventListener('click', e => { const k = e.target.closest('.kpi.clk'); if (k) goList(KGO[+k.dataset.i]); });
+$('#kpis2').addEventListener('click', e => { const k = e.target.closest('.kpi.clk'); if (k) goList(KGO2[+k.dataset.j]); });
+['#lgState', '#lgState2', '#lgState3'].forEach(id => $(id).addEventListener('click', e => { const s = e.target.closest('span[data-k]'); if (s) goList({ state: +s.dataset.k }); }));
+
+/* filters + routing */
+$('#fSido').addEventListener('change', e => { F.sido = e.target.value; if (F.gu && sido(F.gu) !== F.sido && F.sido) { F.gu = ''; $('#fGu').value = ''; } render(); });
+$('#fGu').addEventListener('change', e => { F.gu = e.target.value; render(); });
+$('#fCon').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; F.con = b.dataset.k; [...$('#fCon').children].forEach(x => x.classList.toggle('on', x === b)); render(); });
+$('#fReset').addEventListener('click', () => { F.sido = F.gu = F.con = ''; $('#fSido').value = ''; $('#fGu').value = ''; [...$('#fCon').children].forEach((x, i) => x.classList.toggle('on', !i)); render(); });
+function route() {
+  const v = TITLES[location.hash.slice(1)] ? location.hash.slice(1) : 'home';
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.v === v));
+  $('#vtitle').textContent = TITLES[v][0]; $('#vsub').textContent = (TITLES[v][1] ? TITLES[v][1] + ' · ' : '') + `기준일 ${D.base} · ${D.src || '가상 데이터'}`;
+  $('#filters').style.display = (v === 'team' || v === 'data') ? 'none' : ''; scrollTo(0, 0);
+}
+addEventListener('hashchange', route);
+/* ===== ver.5 데이터 넣기: 원본 9개 처리 엔진 (팀원/신미림/체납관리_분류도구_ver.6.html의 A01~A04 규칙을 그대로 옮김) ===== */
+const ENGINE = (() => {
+const state = { files: {} };
+// ───────── 파일 종류 정의 ─────────
+const KINDS = [
+  {key:'J',  label:'1. 체납집계표',     test:n=>/체납집계표/.test(n), required:true},
+  {key:'P1', label:'2. 납부최고서 1차', test:n=>/납부최고서\s*1차/.test(n)},
+  {key:'P2', label:'3. 납부최고서 2차', test:n=>/납부최고서\s*2차/.test(n)},
+  {key:'GA', label:'4. 가옥명도최고',   test:n=>/가옥명도/.test(n)},
+  {key:'BG', label:'5. 분과심의',       test:n=>/분과심의/.test(n)},
+  {key:'S1', label:'6. 소송통고 1차',   test:n=>/소송통고\s*1차/.test(n)},
+  {key:'JE', label:'7. 제소자',         test:n=>/제소자/.test(n)},
+  {key:'S2', label:'8. 소송통고 2차',   test:n=>/소송통고\s*2차/.test(n)},
+  {key:'SI', label:'9. 소송정보',       test:n=>/소송정보/.test(n)},
+];
+
+// ───────── 공통 유틸 ─────────
+const norm = s => s==null ? '' : String(s).replace(/\s+/g,'');
+const num = v => { if (v==null||v==='') return null; const n = Number(String(v).replace(/,/g,'')); return isFinite(n) ? n : null; };
+const str = v => v==null ? '' : String(v).trim();
+function toDate(v){
+  if (v==null||v==='') return null;
+  if (typeof v==='number' && v>20000 && v<80000) return new Date(Date.UTC(1899,11,30)+Math.round(v)*864e5);
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})(\d{2})(\d{2})$/) || s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if (m) return new Date(Date.UTC(+m[1], +m[2]-1, +m[3]));
+  return null;
+}
+const ymd = d => d ? d.toISOString().slice(0,10) : '';
+const addMonths = (d,k) => { const x = new Date(d); const day = x.getUTCDate(); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth()+k); const last = new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth()+1, 0)).getUTCDate(); x.setUTCDate(Math.min(day,last)); return x; };
+
+// 머리글이 2줄(그룹 / 세부)인 시트: 그룹명을 오른쪽으로 채워 "그룹|세부" 이름을 만든다
+function headerTable(rows, maxScan=8){
+  // '계약번호' 셀이 있는 줄을 찾고, 그 위나 아래 줄이 또 하나의 머리글 줄인지 판단한다
+  let k = -1, cc = -1;
+  for (let i=0;i<Math.min(maxScan,rows.length);i++){ const j = (rows[i]||[]).findIndex(c=>norm(c)==='계약번호'); if (j>=0) { k = i; cc = j; break; } }
+  if (k<0) return null;
+  const has = r => (r||[]).some(c=>c!=null && c!=='');
+  let top = null, subRow, start;
+  const next = rows[k+1];
+  if (has(next) && (next[cc]==null || next[cc]==='')) { top = rows[k]; subRow = next; start = k+2; }      // 계약번호 줄이 위 칸(그룹) 줄
+  else if (k>0 && has(rows[k-1])) { top = rows[k-1]; subRow = rows[k]; start = k+1; }                     // 계약번호 줄이 아래 칸(세부) 줄
+  else { subRow = rows[k]; start = k+1; }                                                                   // 한 줄 머리글
+  top = top || [];
+  const width = Math.max(top.length, subRow.length);
+  const names = []; let group = '';
+  for (let c=0;c<width;c++){
+    if (top[c]!=null && top[c]!=='') group = norm(top[c]);
+    const s = norm(subRow[c]);
+    names.push({group, sub: s || norm(top[c])});
+  }
+  return {names, start};
+}
+function colFinder(h){
+  return (sub, groupPart) => {
+    const i = h.names.findIndex(n => n.sub===sub && (!groupPart || n.group.includes(groupPart)));
+    return i;
+  };
+}
+function readSheet(rows){
+  const h = headerTable(rows); if (!h) return null;
+  return {col: colFinder(h), data: rows.slice(h.start).filter(r => r && r.some(c=>c!=null && c!=='')), names:h.names};
+}
+// ───────── A01 데이터 통합 ─────────
+function mainSheet(key, prefer){
+  const f = state.files[key]; if (!f) return null;
+  const wb = f.wb;
+  // "제외 대상" 시트는 해당 단계를 거치지 않은 행이므로 쓰지 않는다
+  const names = wb.SheetNames.filter(n => !/제외/.test(n));
+  const order = prefer ? names.filter(n=>n.includes(prefer)).concat(names.filter(n=>!n.includes(prefer))) : names;
+  for (const n of order){
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:true, defval:null});
+    const s = readSheet(rows);
+    if (s && s.data.length) return {...s, sheet:n};
+  }
+  return null;
+}
+
+function integrate(){
+  const log = []; // 데이터 확인 사항
+  const J = mainSheet('J');
+  if (!J) throw new Error('체납집계표에서 "계약번호" 머리글을 찾지 못했습니다.');
+  const c = J.col;
+  const need = ['계약번호','계약자','계약/해약구분','체납개월건수','현재월임대료','최근3개월납부금액','총합계','입주자부담금'];
+  const miss = need.filter(n => c(norm(n))<0);
+  if (miss.length) throw new Error('체납집계표에 필요한 열이 없습니다: '+miss.join(', '));
+  const recs = new Map();
+  for (const r of J.data){
+    const no = str(r[c('계약번호')]);
+    if (!no) { log.push({구분:'계약번호 없음', 파일:'체납집계표', 계약번호:'', 내용:'계약자 '+str(r[c('계약자')])}); continue; }
+    recs.set(no, {
+      계약번호: no, 계약자: str(r[c('계약자')]), 지자체명: str(r[c('지자체명')]),
+      구분: str(r[c('계약/해약구분')]), 개월: num(r[c('체납개월건수')]) ?? 0,
+      임대료: num(r[c('현재월임대료')]) ?? 0, 납부3: num(r[c('최근3개월납부금액')]) ?? 0,
+      총합계: num(r[c('총합계')]) ?? 0, 부담금: num(r[c('입주자부담금')]) ?? 0,
+      최근납부일: toDate(r[c('최근납부일')]),
+      dates: [], done: {}, bg: null, si: null, pjDates: [],
+    });
+    const rec = recs.get(no);
+    pushDate(rec, '최종독려', r[c('최종독려일자')]);
+    pushDate(rec, '제소의뢰(집계표)', r[c('소송관리-1단계제소의뢰일자')]);
+    pushDate(rec, '본안소송(집계표)', r[c('소송관리-2단계본안소송일자')]);
+    pushDate(rec, '판결(집계표)', r[c('소송관리-3단계판결일자')]);
+    // ver.5: 체납집계표 소송관리 기록 (분과심의·소송관리 시스템 개설 전 소송 세대)
+    rec.legacy = {
+      Y: str(r[c('소송관리-소송세대여부')]).toUpperCase()==='Y',
+      JE: !!toDate(r[c('소송관리-1단계제소의뢰일자')]),
+      SI: !!toDate(r[c('소송관리-2단계본안소송일자')]),
+      PJ: !!toDate(r[c('소송관리-3단계판결일자')]),
+      PJdate: toDate(r[c('소송관리-3단계판결일자')]),
+    };
+  }
+
+  const fileLabel = k => KINDS.find(x=>x.key===k).label;
+  const attach = (key, fn) => {
+    const s = mainSheet(key, key==='BG' ? '분과심의대상세대' : null);
+    if (!s) return 0;
+    const ci = s.col('계약번호');
+    let n = 0;
+    for (const r of s.data){
+      const no = str(r[ci]);
+      if (!no) { log.push({구분:'계약번호 없음', 파일:fileLabel(key), 계약번호:'', 내용:'계약자 '+str(r[s.col('계약자')])}); continue; }
+      const rec = recs.get(no);
+      if (!rec) { log.push({구분:'체납집계표에 없음', 파일:fileLabel(key), 계약번호:no, 내용:'매핑 실패'}); continue; }
+      fn(rec, r, s.col); n++; (rec.inFile = rec.inFile || {})[key] = true;
+      // 값 충돌 확인 (체납집계표 기준으로 처리)
+      const mc = s.col('체납개월수'); const v = mc>=0 ? num(r[mc]) : null;
+      if (v!=null && rec.개월!=null && v!==rec.개월 && key!=='BG') log.push({구분:'값 다름(집계표 기준 적용)', 파일:fileLabel(key), 계약번호:no, 내용:`체납개월수 ${v} ↔ 집계표 ${rec.개월}`});
+    }
+    return n;
+  };
+  const counts = {};
+  counts.P1 = attach('P1', (rec,r,col) => {
+    if (norm(r[col('납부최고단계')]).includes('1차완료')) rec.done.P1 = true;
+    pushDate(rec,'1차 납부최고', r[col('출력일자','납부최고1차')]);
+    pushDate(rec,'1차 납부최고', r[col('우체국전송일자','납부최고1차')]);
+    pushDate(rec,'1차 납부최고', r[col('납부최고1차발송일자')]);
+  });
+  counts.P2 = attach('P2', (rec,r,col) => {
+    if (norm(r[col('납부최고단계')]).includes('2차완료')) { rec.done.P2 = true; rec.done.P1 = true; }
+    pushDate(rec,'2차 납부최고', r[col('출력일자','납부최고2차')]);
+    pushDate(rec,'2차 납부최고', r[col('우체국전송일자','납부최고2차')]);
+    pushDate(rec,'2차 납부최고', r[col('납부최고2차발송일자')]);
+  });
+  // ver.6: 가옥명도최고는 해제통고·가옥명도최고 상태가 '승인'일 때만 완료 ('진행중'은 아직 안 끝남)
+  counts.GA = attach('GA', (rec,r,col) => { if (str(r[col('상태','가옥명도')])==='승인') rec.done.GA = true; pushDate(rec,'가옥명도최고', r[col('처리일시','가옥명도')]); });
+  counts.BG = attach('BG', (rec,r,col) => {
+    rec.done.BG = true;
+    rec.bg = { 구분: str(r[col('구분')]) };
+    pushDate(rec,'분과심의 확정', r[col('확정일자','확정정보')]);
+  });
+  counts.S1 = attach('S1', (rec) => { rec.done.S1 = true; });
+  counts.JE = attach('JE', (rec,r,col) => {
+    if (toDate(r[col('제소의뢰일','제소의뢰')]) || str(r[col('문서번호','제소의뢰')])) rec.done.JE = true;
+    pushDate(rec,'제소의뢰', r[col('제소의뢰일','제소의뢰')]);
+    pushDate(rec,'제소의뢰', r[col('처리일시','제소의뢰')]);
+  });
+  counts.S2 = attach('S2', (rec,r,col) => { rec.done.S2 = true; pushDate(rec,'2차 소송통고', r[col('처리일시','소송통고2차')]); });
+  counts.SI = attach('SI', (rec,r,col) => {
+    const caseNo = str(r[col('사건번호','본안소송')]);
+    if (caseNo) rec.done.SI = true;
+    rec.si = { 판결결과: str(r[col('판결결과','판결')]), 판결일자: toDate(r[col('판결일자','판결')]) };
+    if (rec.si.판결일자) rec.pjDates.push(rec.si.판결일자);   // 판결 완료 여부는 기준일과 비교해 classify에서 정함
+    pushDate(rec,'본안소송', r[col('본안소송일','본안소송')]);
+    pushDate(rec,'판결', r[col('판결일자','판결')]);
+  });
+  // ver.5: 체납집계표에 소송세대(Y)로 표시되면 집계표를 기준으로 소송 단계까지 거친 것으로 본다
+  //        (분과심의·소송관리 시스템 개설 전에 소송한 세대는 분과심의·소송 파일에 없을 수 있음)
+  for (const rec of recs.values()){
+    const L = rec.legacy; if (!L || !L.Y) continue;
+    const inFiles = !!(rec.bg || rec.done.S1 || rec.done.JE || rec.done.S2 || rec.done.SI);
+    const keys = ['P1','P2','GA','BG','S1','JE'];
+    if (L.SI || L.PJ) keys.push('S2','SI');
+    // ver.6: 판결일자는 소송정보 파일을 우선하고, 없을 때만 체납집계표 판결일자를 씀
+    if (L.PJ && rec.pjDates.length===0) rec.pjDates.push(L.PJdate);
+    keys.forEach(k => rec.done[k] = true);
+    rec.legacyOnly = !inFiles;
+    if (!inFiles) log.push({구분:'소송 이력이 체납집계표에만 있음(집계표 기준 적용)', 파일:'체납집계표', 계약번호:rec.계약번호,
+      내용:`제소의뢰 ${L.JE?'있음':'없음'} · 본안소송 ${L.SI?'있음':'없음'} · 판결 ${L.PJ?'있음(판결결과 없음)':'없음'}`});
+  }
+  return {recs, log, counts};
+}
+function pushDate(rec, label, v){ const d = toDate(v); if (d) rec.dates.push({label, d}); }
+
+// ───────── A02~A04 분류·예외·조치 ─────────
+const ORDER = ['강제집행필요 세대','소송유예자','제소대상자','생활안정지원대상자','분과심의 보류 대상자','분과심의 대상자','장기체납자','중기체납자','단기체납자','독려대상(3개월 미만)'];
+const RECHECK = new Set(['분과심의 보류 대상자','생활안정지원대상자','소송유예자']);
+// 1차 납부최고 > 2차 납부최고 > 가옥명도최고 > 분과심의 순서는 건너뛰지 않는다 (2026-11-13 결정)
+const PRE_STEPS = [['P1','1차 납부최고'],['P2','2차 납부최고'],['GA','가옥명도최고']];
+// 9단계: 1차 납부최고 → 2차 납부최고 → 가옥명도최고 → 분과심의 → 소송통고 1차 → 제소의뢰 → 소송통고 2차 → 본안소송(소송정보입력) → 판결
+const SUIT_STEPS = [...PRE_STEPS, ['BG','분과심의'],['S1','소송통고 1차'],['JE','제소'],['S2','소송통고 2차'],['SI','소송정보입력'],['PJ','판결']];
+const SPECIAL_STEPS = [['JE','제소'],['SI','소송정보입력'],['PJ','판결']];
+const WAIT_COURT = '없음(소송 진행 중·법원 결과 대기)';
+
+function classify(rec, baseDate, S){
+  const 단기 = S['단기체납_시작_개월'], 중기 = S['중기체납_시작_개월'], 장기 = S['장기체납_시작_개월'], 특수 = S['특수채권_최소_체납개월'];
+  const m = rec.개월, rent = rec.임대료, pay = rec.납부3;
+  const 잠식률 = rec.부담금>0 ? rec.총합계/rec.부담금 : null;
+  const 예외 = rent>0 && pay >= rent*S['예외_최근3개월납부_월임대료_배수'];
+  const hits = [];
+  if (m < 단기) hits.push('독려대상(3개월 미만)');
+  if (m>=단기 && m<중기) hits.push('단기체납자');
+  if (m>=중기 && m<장기) hits.push('중기체납자');
+  if (m>=장기) hits.push('장기체납자');
+  if (rec.구분==='해약' && m>=특수) hits.push('특수채권');
+  if (m>=장기 && rec.구분==='계약'){
+    if (예외) hits.push('분과심의 보류 대상자');
+    else if (잠식률!=null && 잠식률>=S['분과심의_보증금잠식률_기준_퍼센트']/100) hits.push('분과심의 대상자');
+  }
+  const bg = rec.bg ? rec.bg.구분 : '';
+  // ver.5: 분과심의 결과 '소송대상자' 또는 체납집계표 소송세대(Y)이면서 분과심의 파일에 없는 세대
+  if (bg==='소송대상자' || (rec.legacy && rec.legacy.Y && !bg)) hits.push('제소대상자');
+  if (bg==='생활안정지원대상자') hits.push('생활안정지원대상자');
+  if (bg==='소송유예자') hits.push('소송유예자');
+  if (hits.includes('제소대상자') && rent>0 && pay >= rent*S['소송유예_최근3개월납부_월임대료_배수'] && !hits.includes('소송유예자')) hits.push('소송유예자');
+  // ver.5: 판결일자가 기준일 이후(미래)면 아직 판결 전 = 소송 진행 중 (2026-11-13 결정)
+  const 판결파일결과 = rec.si ? rec.si.판결결과 : '';
+  const 판결완료 = rec.pjDates.some(d => d <= baseDate) || (rec.pjDates.length===0 && /승소|패소|각하|기각/.test(판결파일결과));
+  const 판결미래 = !판결완료 && rec.pjDates.some(d => d > baseDate);
+  const done = {...rec.done, PJ: 판결완료};
+  // ver.5: 체납집계표에만 소송 기록이 있는 세대는 판결이 났으면 판결결과를 전부승소로 간주 (2026-11-13 결정)
+  let 판결 = 판결파일결과, 간주 = false;
+  if (rec.legacyOnly && 판결완료 && (!판결 || 판결==='선택')) { 판결 = '원고승(전부승소)'; 간주 = true; }
+  const 강제집행납부 = pay <= rent*S['강제집행_최근3개월납부_월임대료_배수_이하'];
+  const 원고승 = /^원고승\((전부|일부)승소\)$/.test(판결);
+  const 판결결과없음 = !판결 || 판결==='선택';
+  // ver.5: 계약자는 9단계를 모두 거쳐야, 해약자(특수채권)는 판결까지 가면 강제집행 판단 (2026-11-13 결정)
+  const 단계완료 = rec.구분==='해약' ? !!done.PJ : SUIT_STEPS.every(([k]) => done[k]);
+  if (단계완료 && 원고승 && 강제집행납부) hits.push('강제집행필요 세대');
+
+  let final;
+  if (hits.includes('강제집행필요 세대')) final = '강제집행필요 세대';
+  else if (rec.구분==='해약' && m>=특수) final = '특수채권';
+  else final = ORDER.find(o => hits.includes(o)) || '독려대상(3개월 미만)';
+
+  // 조치사항
+  let 필요조치 = '', 다음 = '', 완료 = [];
+  const seq = steps => { for (const [k,l] of steps){ if (done[k]) 완료.push(l); else return l; } return ''; };
+  switch (final){
+    case '독려대상(3개월 미만)': 필요조치 = '유선·SNS 납부 독려'; 다음 = 필요조치; break;
+    case '단기체납자': 필요조치 = '1차 납부최고'; 다음 = seq(PRE_STEPS.slice(0,1)); break;
+    case '중기체납자': 필요조치 = '2차 납부최고 (1차 납부최고 선행)'; 다음 = seq(PRE_STEPS.slice(0,2)); break;
+    case '장기체납자': 필요조치 = '분과심의 상정 여부 검토 (1차·2차 납부최고, 가옥명도최고 선행)'; 다음 = seq(PRE_STEPS) || '분과심의 상정 여부 검토'; break;
+    case '분과심의 대상자': 필요조치 = '분과심의 상정 (1차·2차 납부최고, 가옥명도최고 선행)'; 다음 = seq([...PRE_STEPS, ['BG','분과심의 상정']]); break;
+    case '제소대상자': 필요조치 = '1차 납부최고 → 2차 납부최고 → 가옥명도최고 → 분과심의 → 소송통고1차 → 제소 → 소송통고2차 → 소송정보입력(본안소송) → 판결'; 다음 = afterSuit(seq(SUIT_STEPS)); break;
+    case '특수채권': 필요조치 = '제소 → 소송정보입력(본안소송) → 판결 (납부최고·분과심의·가옥명도·소송통고 생략 가능)'; 다음 = afterSuit(seq(SPECIAL_STEPS)); break;
+    case '강제집행필요 세대': 필요조치 = '강제집행 검토'; 다음 = 필요조치; break;
+    default: 필요조치 = '익월 재검토'; 다음 = '익월 재검토';
+  }
+  // 소송 단계: 판결은 법원 결과 대기, 판결 뒤에는 강제집행 조건을 보고 안내
+  function afterSuit(next){
+    if (next==='판결') return WAIT_COURT;
+    if (next) return next;
+    if (판결결과없음) return '판결결과 확인(강제집행 여부 판단)';
+    if (원고승 && !강제집행납부) return '없음(판결 완료·납부 중으로 강제집행 조건 미충족)';
+    return '없음(판결 완료·강제집행 조건 미충족)';
+  }
+  if (!다음) 다음 = '없음(필요조치 완료)';
+
+  // 누락 판별: 기준일 이전 마지막 조치일로부터 2개월 이상 필요조치 미진행
+  const past = rec.dates.filter(x => x.d <= baseDate).sort((a,b)=>b.d-a.d);
+  const last = past[0] || null;
+  let 누락 = '';
+  const target = !RECHECK.has(final) && final!=='독려대상(3개월 미만)' && !다음.startsWith('없음') && 다음!=='소송정보입력' && !다음.startsWith('판결결과 확인') && !예외;
+  if (target){
+    if (!last) 누락 = '확인 필요(조치일 없음)';
+    else if (addMonths(last.d, S['누락_판단_개월']) <= baseDate) 누락 = '누락 의심';
+  }
+  const notes = [];
+  if (rec.legacyOnly) notes.push('소송 이력: 체납집계표 기준(분과심의·소송 파일에 없음)');
+  if (rec.구분==='계약' && done.PJ && !단계완료) notes.push('판결 기록이 있으나 앞 단계 조치 기록이 비어 있음');
+  if (간주) notes.push('판결결과: 체납집계표 소송 세대로 전부승소 간주');
+  if (판결미래) notes.push('판결일자가 기준일 이후라 소송 진행 중으로 봄');
+  if (rec.dates.some(x => x.d > baseDate)) notes.push('기준일 이후 날짜 있음(누락 판별에서 제외)');
+  return {
+    계약번호: rec.계약번호, 계약자: rec.계약자, 지자체명: rec.지자체명, '계약/해약': rec.구분,
+    체납개월건수: m, 현재월임대료: rent, 최근3개월납부금액: pay,
+    보증금잠식률: 잠식률==null ? '' : Math.round(잠식률*1000)/10,
+    '예외(6개월치 이상 납부)': 예외 ? 'Y' : '',
+    분과심의결과: bg, 판결결과: 판결 && 판결!=='선택' ? 판결 + (간주 ? '·간주' : '') : '',
+    해당분류: hits.join(', '), 최종분류: final, 필요조치, '다음 할 일': 다음,
+    '수행 완료 단계': 완료.join(', '),
+    마지막조치: last ? last.label : '', 마지막조치일: last ? ymd(last.d) : '',
+    누락여부: 누락, 비고: notes.join(' / '),
+  };
+}
+function run(items, baseDate, S){
+  state.files = {}; const skipped = [], unknown = [];
+  for (const {name, wb} of items){
+    if (name.includes('오류')) { skipped.push(name); continue; }
+    const kind = KINDS.find(k => k.test(name.normalize('NFC')));
+    if (!kind) { unknown.push(name); continue; }
+    state.files[kind.key] = {name, wb};
+  }
+  if (!state.files.J) throw new Error('체납집계표 파일이 없습니다. 파일 이름에 "체납집계표"가 들어간 파일을 함께 넣어 주세요.');
+  const {recs, log, counts} = integrate();
+  const out = [...recs.values()].map(rec => ({ rec, row: classify(rec, baseDate, S) }));
+  return { out, log, counts, recsSize: recs.size, files: Object.fromEntries(Object.entries(state.files).map(([k, v]) => [k, v.name])), skipped, unknown, KINDS };
+}
+return { run, toDate, ymd };
+})();
+/* ===== ver.5 데이터 넣기: 화면 쪽 (넣은 Excel → 대시보드 데이터 D로 바꿔 다시 그림) ===== */
+const escH = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const MASK = id => { id = String(id); return id.length > 7 ? id.slice(0, 4) + '····' + id.slice(-3) : id; };
+const STG_KEYS = ['P1', 'P2', 'GA', 'BG', 'S1', 'JE', 'S2', 'SI', 'PJ'];
+const STG_FILE = { P1: 'P1', P2: 'P2', GA: 'GA', BG: 'BG', S1: 'S1', JE: 'JE', S2: 'S2', SI: 'SI', PJ: 'SI' };
+const CLS_ORDER = ['강제집행필요 세대', '강제집행 대상자', '제소대상자', '소송유예자', '생활안정지원대상자', '분과심의 대상자', '분과심의 보류 대상자', '장기체납자', '중기체납자', '단기체납자', '특수채권', '독려대상(3개월 미만)'];
+const SET_LABEL = { '단기체납 시작': '단기체납_시작_개월', '중기체납 시작': '중기체납_시작_개월', '장기체납 시작': '장기체납_시작_개월', '특수채권(해약) 최소 체납': '특수채권_최소_체납개월', '분과심의 보증금잠식률': '분과심의_보증금잠식률_기준_퍼센트', '예외: 최근3개월 납부': '예외_최근3개월납부_월임대료_배수', '소송유예: 최근3개월 납부': '소송유예_최근3개월납부_월임대료_배수', '강제집행: 최근3개월 납부': '강제집행_최근3개월납부_월임대료_배수_이하', '누락 판단: 마지막 조치 후': '누락_판단_개월' };
+let DATA_INFO = { kind: 'default' };
+/* 관리 상태: 0 누락 의심 · 1 관리필요(다음 할 일 남음) · 2 익월 재검토 · 3 관리중(완료·법원 대기) — 여현서 A05 지표와 같은 정의 */
+function stateOf(row) { const nx = String(row['다음 할 일'] || ''); if (row['누락여부'] === '누락 의심') return 0; if (nx === '익월 재검토') return 2; if (nx.startsWith('없음')) return 3; return 1; }
+const readWb = f => f.arrayBuffer().then(b => ({ name: f.name, wb: XLSX.read(b, { type: 'array' }) }));
+const needXLSX = () => { if (typeof XLSX === 'undefined') throw new Error('Excel 읽기 기능(SheetJS)을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.'); };
+
+function renderDataInfo() {
+  const i = DATA_INFO, rows = [];
+  if (i.kind === 'default') rows.push(['데이터', '기본 가상 데이터 (팀 저장소 통합데이터 · 여현서 10월 지표계산)'], ['기준일', escH(D.base)], ['세대', fmt(D.hh.length)]);
+  else {
+    rows.push(['데이터', i.kind === 'raw' ? '원본 Excel을 이 페이지에서 바로 통합·분류' : '통합 실행 결과 2개 (통합데이터 + 분류결과)'], ['기준일', escH(D.base)], ['세대', fmt(D.hh.length)], ['넣은 파일', i.files.map(escH).join('<br>')]);
+    if (i.skipped && i.skipped.length) rows.push(['뺀 파일 ("오류")', i.skipped.map(escH).join('<br>')]);
+    if (i.unknown && i.unknown.length) rows.push(['종류를 몰라 뺀 파일', i.unknown.map(escH).join('<br>')]);
+    if (i.notJoined) rows.push(['통합데이터에 없는 세대', `${fmt(i.notJoined)}세대 (체납액·조치 진행 점이 비어 있음)`]);
+    if (i.logN != null) rows.push(['데이터 확인 사항', `${fmt(i.logN)}건 (매핑 실패 ${fmt(D.mapFail)}건 포함)`]);
+    if (i.settingsFile) rows.push(['판단 기준값 파일', escH(i.settingsFile)]);
+  }
+  $('#dInfo').innerHTML = rows.map(r => `<div>${r[0]}</div><div>${r[1]}</div>`).join('');
+}
+
+function applyData(D2, info) {
+  Object.assign(D, D2);
+  D.hh.forEach(r => { r[13] = (r[10] || '').split('').filter(x => x === '2').length; });
+  const present = [...new Set(D.hh.map(r => r[5]))];
+  CLS.splice(0, CLS.length, ...CLS_ORDER.filter(c => present.includes(c)), ...present.filter(c => !CLS_ORDER.includes(c)));
+  TITLES.list[1] = '체납세대';
+  const b = String(D.base).split('-'); $('#heroEye').textContent = `전세임대 체납관리 · ${b[0]}년 ${+b[1]}월`;
+  $('#a05Lead').textContent = '분류 결과를 받아 월 결산 지표를 계산하고 보고서 초안을 만드는 단계입니다. 아래 수치는 「데이터 넣기」에서 넣은 파일로 계산한 값입니다(전월 비교·이번 달 수행 실적은 넣은 파일에 없어 비어 있습니다).';
+  DATA_INFO = info;
+  $('#dotSrc').textContent = info.kind === 'raw' ? '· 오른쪽 조치 진행 열은 분류 규칙(분류도구 ver.6)이 완료로 본 단계 기준 — 김태경 님 통합데이터의 판단과 일부 다를 수 있음' : '· 오른쪽 조치 진행 열은 김태경 님 A01 통합데이터 기준';
+  F.sido = F.gu = F.con = ''; $('#fSido').value = ''; $('#fGu').value = ''; [...$('#fCon').children].forEach((x, i) => x.classList.toggle('on', !i));
+  LX = null; $('#q').value = ''; listPage = 1;
+  renderStatic(); render();
+  if (location.hash !== '#home') location.hash = '#home'; else route();
+}
+
+/* ② 통합 실행 결과 2개 */
+async function loadResults(fileList) {
+  needXLSX();
+  const items = await Promise.all([...fileList].filter(f => /\.xlsx$/i.test(f.name)).map(readWb));
+  const integ = items.find(i => i.wb.SheetNames.includes('통합'));
+  const cls = items.find(i => i.wb.SheetNames.includes('전체 결과'));
+  if (!cls) throw new Error('분류결과 Excel(「전체 결과」 시트가 있는 파일)이 없습니다. 체납관리_분류결과_YYYYMM.xlsx를 함께 넣어 주세요.');
+  if (!integ) throw new Error('통합데이터 Excel(「통합」 시트가 있는 파일)이 없습니다. 체납관리_통합데이터_YYYYMM.xlsx를 함께 넣어 주세요. 원본 9개만 있다면 오른쪽 ②를 쓰세요.');
+  const IR = XLSX.utils.sheet_to_json(integ.wb.Sheets['통합'], { header: 1, raw: true, defval: '' });
+  const ih = (IR[0] || []).map(x => String(x).trim()), ci = n => ih.indexOf(n);
+  for (const n of ['계약번호', '지자체명', '계약/해약', '체납액', '현재 단계', ...D.STAGES]) if (ci(n) < 0) throw new Error(`통합데이터에 「${n}」 열이 없습니다. 김태경 님 통합데이터 형식인지 확인해 주세요.`);
+  const sIdx = D.STAGES.map(s => ci(s)), imap = new Map(), integRows = [];
+  for (const r of IR.slice(1)) {
+    const id = String(r[ci('계약번호')]).trim(); if (!id) continue;
+    const st = sIdx.map(i => { const v = String(r[i] ?? '').trim(); return v === '' ? '0' : v.startsWith('대상') ? '1' : '2'; }).join('');
+    const o = { gu: String(r[ci('지자체명')]), con: String(r[ci('계약/해약')]), amt: Number(r[ci('체납액')]) || 0, st, cur: String(r[ci('현재 단계')]) };
+    imap.set(id, o); integRows.push([o.gu, o.con, st, o.cur]);
+  }
+  const DS = integ.wb.Sheets['설명'] ? XLSX.utils.sheet_to_json(integ.wb.Sheets['설명'], { header: 1, defval: '' }) : [];
+  const files = DS.filter(r => /^\d\. /.test(String(r[1] || ''))).map(r => [r[0], String(r[1]).replace(/\.xlsx$/, ''), Number(r[2]), Number(r[3])]);
+  const made = String((DS.find(r => r[0] === '만든 시각') || [])[1] || ''), mapFail = Number((DS.find(r => r[0] === '매핑실패 행 수') || [0, 0])[1]) || 0;
+  const SUM = cls.wb.Sheets['요약'] ? XLSX.utils.sheet_to_json(cls.wb.Sheets['요약'], { header: 1, defval: '' }) : [];
+  let base = String((SUM.find(r => r[0] === '기준일') || [])[1] || '').slice(0, 10) || D.base;
+  const crit = { ...D.crit }; for (const r of SUM) { const k = SET_LABEL[String(r[0]).trim()]; if (k && r[1] !== '' && isFinite(+r[1])) crit[k] = +r[1]; }
+  const CR = XLSX.utils.sheet_to_json(cls.wb.Sheets['전체 결과'], { defval: '' });
+  if (!CR.length || !('계약번호' in CR[0]) || !('최종분류' in CR[0])) throw new Error('분류결과 「전체 결과」 시트에 계약번호·최종분류 열이 없습니다.');
+  let notJoined = 0;
+  const hh = CR.map(r => {
+    const id = String(r['계약번호']).trim(), g = imap.get(id); if (!g) notJoined++;
+    return [MASK(id), String(r['지자체명'] || (g && g.gu) || ''), String(r['계약/해약'] || ''), Number(r['체납개월건수']) || 0, g ? g.amt : 0, String(r['최종분류']), stateOf(r), String(r['다음 할 일']), String(r['마지막조치일'] || ''), g ? g.cur : '', g ? g.st : '', r['누락여부'] === '확인 필요(조치일 없음)' ? 1 : 0, ''];
+  });
+  applyData({ base, made, mapFail, integ: integRows, files, hh, prev: {}, flow: [], done: [], prevNext: {}, prevCls: {}, crit, src: '넣은 데이터(통합 실행 결과)' },
+    { kind: 'results', files: [integ.name, cls.name], notJoined });
+}
+
+/* ① 원본 Excel 9개 → ENGINE(분류도구 ver.6 규칙)으로 통합·분류 */
+async function loadRaw(fileList) {
+  needXLSX();
+  const all = [...fileList], json = all.find(f => /\.json$/i.test(f.name));
+  const crit = { ...D.crit };
+  if (json) { const o = JSON.parse((await json.text()).replace(/^﻿/, '')); for (const k of Object.keys(crit)) if (o[k] != null && o[k] !== '' && isFinite(+o[k])) crit[k] = +o[k]; }
+  if (!(crit['단기체납_시작_개월'] < crit['중기체납_시작_개월'] && crit['중기체납_시작_개월'] < crit['장기체납_시작_개월'])) throw new Error('판단 기준값의 체납기간 구간이 맞지 않습니다(단기 < 중기 < 장기).');
+  const bv = $('#dBase').value, baseDate = ENGINE.toDate(bv);
+  if (!baseDate) throw new Error('기준일(월말 결산일)을 입력해 주세요.');
+  const items = await Promise.all(all.filter(f => /\.xlsx$/i.test(f.name)).map(readWb));
+  const R = ENGINE.run(items, baseDate, crit);
+  const hh = [], integRows = [];
+  for (const { rec, row } of R.out) {
+    const pjDone = rec.pjDates.some(d => d <= baseDate) || (rec.pjDates.length === 0 && !!rec.si && /승소|패소|각하|기각/.test(rec.si.판결결과));
+    const done = { ...rec.done, PJ: pjDone };
+    const st = STG_KEYS.map(k => done[k] ? '2' : (rec.inFile && rec.inFile[STG_FILE[k]]) ? '1' : '0').join('');
+    const li = st.lastIndexOf('2'), cur = li < 0 ? '조치 전' : D.STAGES[li];
+    hh.push([MASK(rec.계약번호), rec.지자체명, rec.구분, rec.개월, rec.총합계, row.최종분류, stateOf(row), row['다음 할 일'], row.마지막조치일, cur, st, row.누락여부 === '확인 필요(조치일 없음)' ? 1 : 0, '']);
+    integRows.push([rec.지자체명, rec.구분, st, cur]);
+  }
+  const fails = lbl => R.log.filter(l => l.파일 === lbl && (l.구분 === '체납집계표에 없음' || l.구분 === '계약번호 없음')).length;
+  const files = R.KINDS.filter(k => R.files[k.key]).map(k => { const m = k.key === 'J' ? R.recsSize : (R.counts[k.key] || 0); const f = k.key === 'J' ? fails('체납집계표') : fails(k.label); return [k.key, R.files[k.key].replace(/\.xlsx$/, ''), m + f, m]; });
+  const mapFail = R.log.filter(l => l.구분 === '체납집계표에 없음' || l.구분 === '계약번호 없음').length;
+  applyData({ base: bv, made: new Date().toLocaleString('ko-KR'), mapFail, integ: integRows, files, hh, prev: {}, flow: [], done: [], prevNext: {}, prevCls: {}, crit, src: '넣은 데이터(원본 Excel)' },
+    { kind: 'raw', files: Object.values(R.files), skipped: R.skipped, unknown: R.unknown, logN: R.log.length, settingsFile: json ? json.name : '' });
+}
+
+function wireDrop(dropId, pickId, msgId, handler) {
+  const d = $(dropId), p = $(pickId), m = $(msgId);
+  const go = async fl => {
+    if (!fl || !fl.length) return;
+    m.className = 'dmsg'; m.textContent = '읽는 중입니다…';
+    try { await handler(fl); m.className = 'dmsg ok'; m.textContent = '화면을 새 데이터로 바꿨습니다.'; }
+    catch (e) { console.error(e); m.className = 'dmsg err'; m.textContent = e && e.message ? e.message : String(e); }
+  };
+  d.addEventListener('click', () => p.click());
+  d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('over'); });
+  d.addEventListener('dragleave', () => d.classList.remove('over'));
+  d.addEventListener('drop', e => { e.preventDefault(); d.classList.remove('over'); go(e.dataTransfer.files); });
+  p.addEventListener('change', () => { go(p.files); p.value = ''; });
+}
+wireDrop('#dropA', '#pickA', '#msgA', loadResults);
+wireDrop('#dropB', '#pickB', '#msgB', loadRaw);
+(function () { const t = new Date(); const d = new Date(Date.UTC(t.getFullYear(), t.getMonth(), 0)); $('#dBase').value = d.toISOString().slice(0, 10); })();
+$('#dReset').addEventListener('click', () => { location.href = location.pathname; });
+renderStatic(); render(); route();
+</script>
+</body>
+</html>

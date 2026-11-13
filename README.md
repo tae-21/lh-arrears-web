@@ -3,6 +3,7 @@
 체납관리 통합데이터(가상)로 만든 대시보드입니다. 계약별로 납부최고 → 가옥명도 → 분과심의 → 소송 조치가 어디까지 진행됐는지 한 화면에서 볼 수 있습니다.
 
 - 페이지: https://tae-21.github.io/lh-arrears-web/
+- 1팀 체납관리 홈 ver.6: https://tae-21.github.io/lh-arrears-web/team/ (팀 저장소 `dashboard/index_ver.6.html`과 같은 파일)
 - 데이터: `data.js` (계약 500건, 가상 데이터)
 - 이름·주민번호·연락처·계약번호·담당자 같은 개인정보는 넣지 않았습니다.
 
