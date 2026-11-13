@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>전세임대 체납관리 현황</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 레이아웃: 위에서 아래로 요약 → 필터 → 차트 4개(2열) → 계약별 진행표 */
+:root{
+  color-scheme: light;
+  --bg:#f4f5f3; --surface:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --muted:#7a7974; --line:#dedcd6; --grid:#ecebe7;
+  --s1:#2a78d6; --s1-soft:#d9e7f8; --pend:#b06f00; --pend-soft:#fbefd6;
+  --font:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme: dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#97968d; --line:#33322f; --grid:#262624;
+  --s1:#3987e5; --s1-soft:#1d3048; --pend:#e0a43a; --pend-soft:#3a2e15; } }
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#97968d; --line:#33322f; --grid:#262624;
+  --s1:#3987e5; --s1-soft:#1d3048; --pend:#e0a43a; --pend-soft:#3a2e15; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.55}
+.wrap{max-width:1240px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:8px 24px}
+h1{font-size:26px;line-height:1.25;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:15px;margin:0;font-weight:600}
+.sub{color:var(--ink-2);margin:4px 0 0}
+.meta{color:var(--muted);font-size:12.5px;text-align:right}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi b{display:block;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi span{color:var(--ink-2);font-size:12.5px}
+.kpi small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.filters{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end}
+.filters label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-2)}
+select,input[type=search]{font:inherit;font-size:13.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:130px}
+button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--ink-2)}
+:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.count-note{color:var(--muted);font-size:12.5px;margin-left:auto}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.chart-head p{margin:0;color:var(--muted);font-size:12px}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar-row{display:grid;grid-template-columns:118px minmax(0,1fr) 92px;align-items:center;gap:10px;font-size:13px;padding:2px 0;border-radius:4px;cursor:default}
+.bar-row:hover{background:var(--grid)}
+.bar-label{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track{position:relative;height:16px;border-left:1px solid var(--line)}
+.fill{position:absolute;left:0;top:0;bottom:0;background:var(--s1);border-radius:0 4px 4px 0;min-width:2px}
+.fill.pend{background:var(--s1-soft);border-radius:0 4px 4px 0}
+.bar-val{font-variant-numeric:tabular-nums;text-align:right;color:var(--ink)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);flex-wrap:wrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:1080px;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--grid);text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:var(--surface);font-size:12px;color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--line)}
+th.st{text-align:center;writing-mode:horizontal-tb;max-width:64px;white-space:normal;line-height:1.25}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.dot{text-align:center}
+.d{display:inline-block;width:12px;height:12px;border-radius:50%}
+.d.done{background:var(--s1)}
+.d.pend{border:2px solid var(--pend);background:var(--pend-soft)}
+.d.none{width:10px;height:2px;border-radius:1px;background:var(--line)}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--grid);color:var(--ink)}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;font-size:13px;color:var(--ink-2)}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12.5px;padding:6px 9px;border-radius:6px;max-width:280px;z-index:20;opacity:0;transition:opacity .08s}
+#tip.on{opacity:1}
+footer{color:var(--muted);font-size:12px}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:minmax(0,1fr)}.meta{text-align:left}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>전세임대 체납관리 현황</h1>
+      <p class="sub">계약별 체납 조치 진행(납부최고 → 가옥명도 → 분과심의 → 소송)을 한 화면에서 봅니다.</p>
+    </div>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="요약"></section>
+
+  <section class="card filters" aria-label="필터">
+    <label for="f-area">지역<select id="f-area"></select></label>
+    <label for="f-type">지원유형<select id="f-type"></select></label>
+    <label for="f-ct">계약/해약<select id="f-ct"></select></label>
+    <label for="f-mon">체납기간<select id="f-mon"></select></label>
+    <label for="f-cur">현재 단계<select id="f-cur"></select></label>
+    <button id="reset" type="button">필터 초기화</button>
+    <span class="count-note" id="count-note"></span>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <div class="chart-head"><h2>단계별 조치 완료 인원</h2>
+        <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>완료</span><span><i class="sw" style="background:var(--s1-soft)"></i>대상(아직 안 함)</span></div></div>
+      <div class="bars" id="c-stage"></div>
+    </section>
+    <section class="card">
+      <div class="chart-head"><h2>현재 단계별 계약 수</h2><p>마지막으로 완료한 단계 기준</p></div>
+      <div class="bars" id="c-cur"></div>
+    </section>
+    <section class="card">
+      <div class="chart-head"><h2>체납기간 구간별 계약 수</h2><p>대상자 분류 기준 구간</p></div>
+      <div class="bars" id="c-mon"></div>
+    </section>
+    <section class="card">
+      <div class="chart-head"><h2>지역별 체납액 상위 10</h2><p>단위: 만원</p></div>
+      <div class="bars" id="c-area"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="chart-head">
+      <h2>계약별 조치 진행</h2>
+      <div class="legend"><span><i class="d done"></i> 완료</span><span><i class="d pend"></i> 대상(아직 안 함)</span><span><i class="d none"></i> 해당 없음</span></div>
+    </div>
+    <div class="filters" style="margin-bottom:10px">
+      <label for="sort">정렬<select id="sort">
+        <option value="done">진행 단계 많은 순</option><option value="amt">체납액 큰 순</option><option value="mon">체납기간 긴 순</option><option value="no">순번</option>
+      </select></label>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="pager"><button type="button" id="prev">이전</button><span id="page"></span><button type="button" id="next">다음</button></div>
+  </section>
+
+  <footer>가상(더미) 데이터로 만든 연습용 화면입니다. 이름·주민번호·연락처·계약번호 같은 개인정보는 넣지 않았습니다. 원본: 체납관리 통합데이터(계약번호 기준으로 9개 파일 통합).</footer>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  const D = window.ARREARS || [], M = window.ARREARS_META || {stages:[]};
+  const STAGES = M.stages;
+  const SHORT = ['납부최고 1차','납부최고 2차','가옥명도','분과심의','소송통고 1차','제소의뢰','소송통고 2차','본안소송','판결'];
+  const $ = id => document.getElementById(id);
+  const fmt = n => (n==null||isNaN(n)) ? '-' : Math.round(n).toLocaleString('ko-KR');
+  const man = n => (n==null||isNaN(n)) ? '-' : Math.round(n/10000).toLocaleString('ko-KR');
+  const eok = n => (n/1e8).toFixed(1)+'억원';
+  const state = s => !s ? 'none' : (s.startsWith('대상') ? 'pend' : 'done');
+  const band = m => m==null ? '정보 없음' : m<=3 ? '3개월 이하' : m<=5 ? '4~5개월' : m<=11 ? '6~11개월' : '12개월 이상';
+  const BANDS = ['3개월 이하','4~5개월','6~11개월','12개월 이상'];
+  const CURS = ['조치 전'].concat(STAGES);
+
+  $('meta').innerHTML = `가상 데이터 · 계약 ${fmt(D.length)}건<br>통합데이터 생성 ${M.made||''}`;
+
+  // 필터
+  const uniq = k => [...new Set(D.map(r=>r[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  function fill(id, items){ $(id).innerHTML = '<option value="">전체</option>' + items.map(x=>`<option>${x}</option>`).join(''); }
+  fill('f-area', uniq('area')); fill('f-type', uniq('type')); fill('f-ct', uniq('ct')); fill('f-mon', BANDS); fill('f-cur', CURS);
+  const F = ['f-area','f-type','f-ct','f-mon','f-cur'];
+  function rows(){
+    const a=$('f-area').value, t=$('f-type').value, c=$('f-ct').value, m=$('f-mon').value, u=$('f-cur').value;
+    return D.filter(r => (!a||r.area===a)&&(!t||r.type===t)&&(!c||r.ct===c)&&(!m||band(r.mon)===m)&&(!u||r.cur===u));
+  }
+
+  // 툴팁
+  const tip = $('tip');
+  function showTip(e, html){ tip.innerHTML = html; tip.classList.add('on'); moveTip(e); }
+  function moveTip(e){ const x=e.clientX+14, y=e.clientY+14; const w=tip.offsetWidth, h=tip.offsetHeight;
+    tip.style.left = Math.min(x, innerWidth-w-8)+'px'; tip.style.top = Math.min(y, innerHeight-h-8)+'px'; }
+  function hideTip(){ tip.classList.remove('on'); }
+  document.addEventListener('mousemove', e => { if (tip.classList.contains('on')) moveTip(e); });
+
+  function bars(el, items, opt={}){
+    const max = Math.max(1, ...items.map(i=>opt.stack ? i.v+(i.p||0) : i.v));
+    el.innerHTML = items.map((i,k)=>{
+      const w = i.v/max*100, pw = (i.p||0)/max*100;
+      return `<div class="bar-row" data-k="${k}"><span class="bar-label" title="${i.l}">${i.l}</span>
+        <span class="track">${opt.stack?`<span class="fill pend" style="width:calc(${w+pw}% )"></span>`:''}<span class="fill" style="width:${w}%"></span></span>
+        <span class="bar-val">${opt.val?opt.val(i):fmt(i.v)}</span></div>`;
+    }).join('');
+    el.querySelectorAll('.bar-row').forEach(row => {
+      const i = items[+row.dataset.k];
+      row.addEventListener('mouseenter', e => showTip(e, opt.tip ? opt.tip(i) : `<b>${i.l}</b><br>${fmt(i.v)}건`));
+      row.addEventListener('mouseleave', hideTip);
+    });
+  }
+
+  function render(){
+    const R = rows();
+    $('count-note').textContent = `${fmt(R.length)}건 표시 중 (전체 ${fmt(D.length)}건)`;
+    // 요약
+    const total = R.reduce((s,r)=>s+(r.amt||0),0);
+    const avgMon = R.length ? R.reduce((s,r)=>s+(r.mon||0),0)/R.length : 0;
+    const lit = R.filter(r=>state(r.st[5])==='done').length;
+    const judged = R.filter(r=>state(r.st[8])==='done').length;
+    const none = R.filter(r=>r.cur==='조치 전').length;
+    $('kpis').innerHTML = [
+      ['계약 수', fmt(R.length)+'건', ''],
+      ['총 체납액', eok(total), `1건 평균 ${man(R.length?total/R.length:0)}만원`],
+      ['평균 체납기간', avgMon.toFixed(1)+'개월', ''],
+      ['소송 단계 진입', fmt(lit)+'건', '제소의뢰 이후'],
+      ['아직 조치 전', fmt(none)+'건', '납부최고 1차 전']
+    ].map(k=>`<div class="card kpi"><span>${k[0]}</span><b>${k[1]}</b>${k[2]?`<small>${k[2]}</small>`:''}</div>`).join('');
+
+    // 단계별 완료/대상
+    bars($('c-stage'), STAGES.map((s,i)=>({ l:SHORT[i], v:R.filter(r=>state(r.st[i])==='done').length, p:R.filter(r=>state(r.st[i])==='pend').length })), {
+      stack:true,
+      val:i=>`${fmt(i.v)}${i.p?` <span style="color:var(--muted)">+${fmt(i.p)}</span>`:''}`,
+      tip:i=>`<b>${i.l}</b><br>완료 ${fmt(i.v)}건${i.p?`<br>대상(아직 안 함) ${fmt(i.p)}건`:''}`
+    });
+    // 현재 단계
+    bars($('c-cur'), CURS.map(c=>({ l:c.replace('(1단계)','').replace('(2단계)','').replace('(3단계)',''), v:R.filter(r=>r.cur===c).length })));
+    // 체납기간
+    bars($('c-mon'), BANDS.map(b=>{ const rr=R.filter(r=>band(r.mon)===b); return { l:b, v:rr.length, a:rr.reduce((s,r)=>s+(r.amt||0),0) }; }), {
+      tip:i=>`<b>${i.l}</b><br>${fmt(i.v)}건 · 체납액 ${man(i.a)}만원`
+    });
+    // 지역별 체납액
+    const byArea = {}; R.forEach(r=>{ const k=r.area||'정보 없음'; byArea[k]=byArea[k]||{a:0,n:0}; byArea[k].a+=r.amt||0; byArea[k].n++; });
+    const top = Object.entries(byArea).sort((a,b)=>b[1].a-a[1].a).slice(0,10).map(([k,o])=>({ l:k.replace(/^전세\(|\)$/g,''), v:o.a, n:o.n }));
+    bars($('c-area'), top, { val:i=>man(i.v), tip:i=>`<b>${i.l}</b><br>체납액 ${man(i.v)}만원 · ${fmt(i.n)}건` });
+
+    page = 0; table(R);
+  }
+
+  // 표
+  let page = 0, cur = [];
+  const PER = 50;
+  $('thead').innerHTML = ['순번','지역','지원유형','계약/해약','체납개월','체납액(만원)'].map(h=>`<th>${h}</th>`).join('') +
+    SHORT.map(s=>`<th class="st">${s}</th>`).join('') + '<th>현재 단계</th>';
+  function table(R){
+    const s = $('sort').value;
+    cur = R.slice().sort((a,b)=> s==='no' ? a.no-b.no : s==='amt' ? (b.amt||0)-(a.amt||0) : s==='mon' ? (b.mon||0)-(a.mon||0) : (b.done-a.done)||((b.amt||0)-(a.amt||0)));
+    drawPage();
+  }
+  function drawPage(){
+    const pages = Math.max(1, Math.ceil(cur.length/PER)); page = Math.min(page, pages-1);
+    const slice = cur.slice(page*PER, page*PER+PER);
+    $('tbody').innerHTML = slice.map(r=>`<tr><td class="num">${r.no}</td><td>${(r.area||'').replace(/^전세\(|\)$/g,'')}</td><td>${r.type||''}</td><td>${r.ct||''}</td>
+      <td class="num">${r.mon??''}</td><td class="num">${man(r.amt)}</td>` +
+      r.st.map((v,i)=>{ const k=state(v); const t = k==='none'?'해당 없음':v; return `<td class="dot"><span class="d ${k}" data-t="${SHORT[i]}: ${t}" aria-label="${SHORT[i]} ${t}"></span></td>`; }).join('') +
+      `<td><span class="pill">${r.cur}</span></td></tr>`).join('') || `<tr><td colspan="16" style="color:var(--muted)">조건에 맞는 계약이 없습니다.</td></tr>`;
+    $('tbody').querySelectorAll('.d').forEach(d=>{ d.parentElement.addEventListener('mouseenter', e=>showTip(e, d.dataset.t)); d.parentElement.addEventListener('mouseleave', hideTip); });
+    $('page').textContent = `${page+1} / ${pages}쪽`;
+    $('prev').disabled = page===0; $('next').disabled = page>=pages-1;
+  }
+  $('prev').onclick = ()=>{ page--; drawPage(); };
+  $('next').onclick = ()=>{ page++; drawPage(); };
+  $('sort').onchange = ()=>{ page=0; table(rows()); };
+  F.forEach(id => $(id).addEventListener('change', render));
+  $('reset').onclick = ()=>{ F.forEach(id => $(id).value=''); render(); };
+  render();
+})();
+</script>
+</body>
+</html>
